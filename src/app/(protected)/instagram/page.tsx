@@ -1,10 +1,25 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { InstagramPost } from '@/types/database'
-import { Plus, X, Video, Image, Smartphone, Edit2, Trash2, Calendar, TrendingUp } from 'lucide-react'
+import { Plus, X, Video, Image, Smartphone, Edit2, Trash2, Calendar, TrendingUp, GripVertical } from 'lucide-react'
 import { LucideIcon } from 'lucide-react'
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  DragOverEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCorners,
+  useDroppable
+} from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 const statusColumns = ['idea', 'draft', 'scheduled', 'posted'] as const
 
@@ -21,11 +36,117 @@ const formatConfig: Record<string, { icon: LucideIcon; label: string }> = {
   story: { icon: Smartphone, label: 'Story' }
 }
 
+// Droppable Column Component
+function DroppableColumn({ id, children, config }: {
+  id: string
+  children: React.ReactNode
+  config: typeof statusConfig[keyof typeof statusConfig]
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id })
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`min-h-[500px] bg-surface/50 rounded-xl p-3 border-2 border-dashed ${config.border} space-y-3 transition-all ${
+        isOver ? 'ring-2 ring-accent-primary bg-accent-primary/5 scale-[1.02]' : ''
+      }`}
+    >
+      {children}
+    </div>
+  )
+}
+
+// Sortable Post Card Component
+function SortablePostCard({ post, config, onEdit, onDelete, onUpdateStatus, statusColumns }: {
+  post: InstagramPost
+  config: typeof statusConfig[keyof typeof statusConfig]
+  onEdit: (post: InstagramPost) => void
+  onDelete: (id: string) => void
+  onUpdateStatus: (id: string, status: InstagramPost['status']) => void
+  statusColumns: readonly string[]
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: post.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1
+  }
+
+  const FormatIcon = formatConfig[post.format].icon
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="bg-surface p-4 rounded-lg border border-border-subtle hover:border-accent-primary/30 transition cursor-pointer group"
+    >
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing p-1 hover:bg-background rounded transition"
+          >
+            <GripVertical size={16} className="text-foreground-muted" />
+          </div>
+          <div className={`flex items-center gap-2 px-2 py-1 rounded-full ${config.bg}`}>
+            <FormatIcon size={14} className={config.color} />
+            <span className={`text-xs ${config.color}`}>{formatConfig[post.format].label}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+          <button
+            onClick={() => onEdit(post)}
+            className="p-1 text-foreground-muted hover:text-accent-primary rounded transition"
+          >
+            <Edit2 size={14} />
+          </button>
+          <button
+            onClick={() => onDelete(post.id)}
+            className="p-1 text-foreground-muted hover:text-red-400 rounded transition"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </div>
+
+      {post.title && (
+        <h4 className="font-medium text-sm mb-2">{post.title}</h4>
+      )}
+
+      {post.hook && (
+        <p className="text-xs text-foreground-muted line-clamp-3 mb-3">{post.hook}</p>
+      )}
+
+      <div className="flex gap-1 flex-wrap">
+        {statusColumns.filter(s => s !== post.status).map(s => (
+          <button
+            key={s}
+            onClick={() => onUpdateStatus(post.id, s as InstagramPost['status'])}
+            className="text-xs px-2 py-1 bg-background rounded hover:bg-accent-primary/20 transition capitalize"
+          >
+            → {s}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function InstagramPage() {
   const [posts, setPosts] = useState<InstagramPost[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingPost, setEditingPost] = useState<InstagramPost | null>(null)
+  const [activeId, setActiveId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     title: '',
     hook: '',
@@ -36,6 +157,77 @@ export default function InstagramPage() {
   })
   const [saving, setSaving] = useState(false)
   const supabase = createClient()
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  )
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(event.active.id as string)
+  }, [])
+
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    const { active, over } = event
+    if (!over) return
+
+    // Check if we're over a column
+    let overColumn: InstagramPost['status'] | undefined = statusColumns.find(col => over.id === col)
+    
+    // If not over a column, check if we're over an item and get its column
+    if (!overColumn) {
+      setPosts(prevPosts => {
+        const overPost = prevPosts.find(p => p.id === over.id)
+        const targetColumn = overPost?.status
+        
+        if (targetColumn) {
+          const activePost = prevPosts.find(p => p.id === active.id)
+          if (!activePost || activePost.status === targetColumn) return prevPosts
+          
+          return prevPosts.map(p => 
+            p.id === active.id ? { ...p, status: targetColumn } : p
+          )
+        }
+        return prevPosts
+      })
+    } else {
+      // Optimistically update UI when over a column
+      setPosts(prevPosts => {
+        const activePost = prevPosts.find(p => p.id === active.id)
+        if (!activePost || activePost.status === overColumn) return prevPosts
+        
+        return prevPosts.map(p => 
+          p.id === active.id ? { ...p, status: overColumn! } : p
+        )
+      })
+    }
+  }, [])
+
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveId(null)
+
+    if (!over) return
+
+    // Check if we're over a column
+    let overColumn = statusColumns.find(col => over.id === col)
+    
+    // If not over a column, check if we're over an item and get its column
+    if (!overColumn) {
+      const overPost = posts.find(p => p.id === over.id)
+      if (overPost) {
+        overColumn = overPost.status
+      }
+    }
+    
+    if (overColumn) {
+      // Update in database
+      await updateStatus(active.id as string, overColumn)
+    }
+  }, [posts])
 
   const fetchPosts = async () => {
     const { data } = await supabase
@@ -165,80 +357,58 @@ export default function InstagramPage() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {statusColumns.map(status => {
-            const config = statusConfig[status]
-            const statusPosts = getPostsByStatus(status)
-            
-            return (
-              <div key={status} className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className={`font-medium ${config.color}`}>{config.label}</h3>
-                  <span className="text-sm text-foreground-muted">{statusPosts.length}</span>
-                </div>
-                
-                <div className={`min-h-[500px] bg-surface/50 rounded-xl p-3 border-2 border-dashed ${config.border} space-y-3`}>
-                  {statusPosts.length === 0 ? (
-                    <div className="text-center py-8 text-foreground-muted text-sm">
-                      No {config.label.toLowerCase()}
-                    </div>
-                  ) : (
-                    statusPosts.map(post => {
-                      const FormatIcon = formatConfig[post.format].icon
-                      return (
-                        <div 
-                          key={post.id}
-                          className="bg-surface p-4 rounded-lg border border-border-subtle hover:border-accent-primary/30 transition cursor-pointer group"
-                        >
-                          <div className="flex items-start justify-between mb-3">
-                            <div className={`flex items-center gap-2 px-2 py-1 rounded-full ${config.bg}`}>
-                              <FormatIcon size={14} className={config.color} />
-                              <span className={`text-xs ${config.color}`}>{formatConfig[post.format].label}</span>
-                            </div>
-                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                              <button
-                                onClick={() => openEdit(post)}
-                                className="p-1 text-foreground-muted hover:text-accent-primary rounded transition"
-                              >
-                                <Edit2 size={14} />
-                              </button>
-                              <button
-                                onClick={() => deletePost(post.id)}
-                                className="p-1 text-foreground-muted hover:text-red-400 rounded transition"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          </div>
-                          
-                          {post.title && (
-                            <h4 className="font-medium text-sm mb-2">{post.title}</h4>
-                          )}
-                          
-                          {post.hook && (
-                            <p className="text-xs text-foreground-muted line-clamp-3 mb-3">{post.hook}</p>
-                          )}
-
-                          <div className="flex gap-1 flex-wrap">
-                            {statusColumns.filter(s => s !== status).map(s => (
-                              <button
-                                key={s}
-                                onClick={() => updateStatus(post.id, s)}
-                                className="text-xs px-2 py-1 bg-background rounded hover:bg-accent-primary/20 transition capitalize"
-                              >
-                                → {s}
-                              </button>
-                            ))}
-                          </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {statusColumns.map(status => {
+              const config = statusConfig[status]
+              const statusPosts = getPostsByStatus(status)
+              
+              return (
+                <div key={status} className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className={`font-medium ${config.color}`}>{config.label}</h3>
+                    <span className="text-sm text-foreground-muted">{statusPosts.length}</span>
+                  </div>
+                  
+                  <SortableContext items={statusPosts.map(p => p.id)} strategy={verticalListSortingStrategy}>
+                    <DroppableColumn id={status} config={config}>
+                      {statusPosts.length === 0 ? (
+                        <div className="text-center py-8 text-foreground-muted text-sm">
+                          No {config.label.toLowerCase()}
                         </div>
-                      )
-                    })
-                  )}
+                      ) : (
+                        statusPosts.map(post => (
+                          <SortablePostCard
+                            key={post.id}
+                            post={post}
+                            config={config}
+                            onEdit={openEdit}
+                            onDelete={deletePost}
+                            onUpdateStatus={updateStatus}
+                            statusColumns={statusColumns}
+                          />
+                        ))
+                      )}
+                    </DroppableColumn>
+                  </SortableContext>
                 </div>
+              )
+            })}
+          </div>
+          <DragOverlay>
+            {activeId ? (
+              <div className="bg-surface p-4 rounded-lg border-2 border-accent-primary shadow-2xl opacity-90 rotate-3">
+                <div className="text-sm font-medium">Dragging...</div>
               </div>
-            )
-          })}
-        </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       )}
 
       {showForm && (

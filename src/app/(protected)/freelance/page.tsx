@@ -1,9 +1,24 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { FreelanceClient } from '@/types/database'
-import { Plus, X, DollarSign, Calendar, Edit2, Trash2, TrendingUp, Users } from 'lucide-react'
+import { Plus, X, DollarSign, Calendar, Edit2, Trash2, TrendingUp, Users, GripVertical } from 'lucide-react'
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  DragOverEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCorners,
+  useDroppable
+} from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 const stages = ['lead', 'in_talk', 'proposal', 'active', 'done'] as const
 
@@ -17,11 +32,131 @@ const stageConfig = {
 
 const platforms = ['upwork', 'fiverr', 'dm', 'other'] as const
 
+// Droppable Column Component
+function DroppableColumn({ id, children, config }: {
+  id: string
+  children: React.ReactNode
+  config: typeof stageConfig[keyof typeof stageConfig]
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id })
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`min-h-[400px] bg-surface/50 rounded-xl p-3 border-2 border-dashed ${config.border} space-y-3 transition-all ${
+        isOver ? 'ring-2 ring-accent-primary bg-accent-primary/5 scale-[1.02]' : ''
+      }`}
+    >
+      {children}
+    </div>
+  )
+}
+
+// Sortable Client Card Component
+function SortableClientCard({ client, config, onEdit, onDelete, onUpdateStage, stages }: {
+  client: FreelanceClient
+  config: typeof stageConfig[keyof typeof stageConfig]
+  onEdit: (client: FreelanceClient) => void
+  onDelete: (id: string) => void
+  onUpdateStage: (id: string, stage: FreelanceClient['stage']) => void
+  stages: readonly string[]
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: client.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="bg-surface p-4 rounded-lg border border-border-subtle hover:border-accent-primary/30 transition cursor-pointer group"
+    >
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-2 flex-1">
+          <div
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing p-1 hover:bg-background rounded transition"
+          >
+            <GripVertical size={16} className="text-foreground-muted" />
+          </div>
+          <div className="flex-1">
+            <h4 className="font-medium text-sm mb-1">{client.name}</h4>
+            <span className="text-xs text-foreground-muted capitalize">{client.platform}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+          <button
+            onClick={() => onEdit(client)}
+            className="p-1 text-foreground-muted hover:text-accent-primary rounded transition"
+          >
+            <Edit2 size={14} />
+          </button>
+          <button
+            onClick={() => onDelete(client.id)}
+            className="p-1 text-foreground-muted hover:text-red-400 rounded transition"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </div>
+
+      {client.project_title && (
+        <p className="text-xs text-foreground-muted mb-3 line-clamp-2">{client.project_title}</p>
+      )}
+
+      {client.value && (
+        <div className="flex items-center gap-1 text-accent-success text-sm mb-3">
+          <DollarSign size={14} />
+          {client.currency} {client.value.toLocaleString()}
+        </div>
+      )}
+
+      {client.next_action && (
+        <div className="text-xs bg-background p-2 rounded mb-3">
+          <div className="text-foreground-muted mb-1">Next Action:</div>
+          <div>{client.next_action}</div>
+          {client.next_action_date && (
+            <div className="text-foreground-muted mt-1 flex items-center gap-1">
+              <Calendar size={12} />
+              {new Date(client.next_action_date).toLocaleDateString()}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="flex gap-1 flex-wrap">
+        {stages.filter(s => s !== client.stage).slice(0, 2).map(s => (
+          <button
+            key={s}
+            onClick={() => onUpdateStage(client.id, s as FreelanceClient['stage'])}
+            className="text-xs px-2 py-1 bg-background rounded hover:bg-accent-primary/20 transition capitalize"
+          >
+            → {stageConfig[s as FreelanceClient['stage']].label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function FreelancePage() {
   const [clients, setClients] = useState<FreelanceClient[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingClient, setEditingClient] = useState<FreelanceClient | null>(null)
+  const [activeId, setActiveId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     platform: 'upwork' as FreelanceClient['platform'],
@@ -35,6 +170,77 @@ export default function FreelancePage() {
   })
   const [saving, setSaving] = useState(false)
   const supabase = createClient()
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  )
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(event.active.id as string)
+  }, [])
+
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    const { active, over } = event
+    if (!over) return
+
+    // Check if we're over a column
+    let overColumn: FreelanceClient['stage'] | undefined = stages.find(stage => over.id === stage)
+    
+    // If not over a column, check if we're over an item and get its column
+    if (!overColumn) {
+      setClients(prevClients => {
+        const overClient = prevClients.find(c => c.id === over.id)
+        const targetColumn = overClient?.stage
+        
+        if (targetColumn) {
+          const activeClient = prevClients.find(c => c.id === active.id)
+          if (!activeClient || activeClient.stage === targetColumn) return prevClients
+          
+          return prevClients.map(c => 
+            c.id === active.id ? { ...c, stage: targetColumn } : c
+          )
+        }
+        return prevClients
+      })
+    } else {
+      // Optimistically update UI when over a column
+      setClients(prevClients => {
+        const activeClient = prevClients.find(c => c.id === active.id)
+        if (!activeClient || activeClient.stage === overColumn) return prevClients
+        
+        return prevClients.map(c => 
+          c.id === active.id ? { ...c, stage: overColumn! } : c
+        )
+      })
+    }
+  }, [])
+
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveId(null)
+
+    if (!over) return
+
+    // Check if we're over a column
+    let overColumn = stages.find(stage => over.id === stage)
+    
+    // If not over a column, check if we're over an item and get its column
+    if (!overColumn) {
+      const overClient = clients.find(c => c.id === over.id)
+      if (overClient) {
+        overColumn = overClient.stage
+      }
+    }
+    
+    if (overColumn) {
+      // Update in database
+      await updateStage(active.id as string, overColumn)
+    }
+  }, [clients])
 
   const fetchClients = async () => {
     const { data } = await supabase
@@ -185,93 +391,58 @@ export default function FreelancePage() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-          {stages.map(stage => {
-            const config = stageConfig[stage]
-            const stageClients = getClientsByStage(stage)
-            
-            return (
-              <div key={stage} className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className={`font-medium ${config.color}`}>{config.label}</h3>
-                  <span className="text-sm text-foreground-muted">{stageClients.length}</span>
-                </div>
-                
-                <div className={`min-h-[400px] bg-surface/50 rounded-xl p-3 border-2 border-dashed ${config.border} space-y-3`}>
-                  {stageClients.length === 0 ? (
-                    <div className="text-center py-8 text-foreground-muted text-sm">
-                      No {config.label.toLowerCase()}
-                    </div>
-                  ) : (
-                    stageClients.map(client => (
-                      <div 
-                        key={client.id}
-                        className="bg-surface p-4 rounded-lg border border-border-subtle hover:border-accent-primary/30 transition cursor-pointer group"
-                      >
-                        <div className="flex items-start justify-between mb-3">
-                          <div>
-                            <h4 className="font-medium text-sm mb-1">{client.name}</h4>
-                            <span className="text-xs text-foreground-muted capitalize">{client.platform}</span>
-                          </div>
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                            <button
-                              onClick={() => openEdit(client)}
-                              className="p-1 text-foreground-muted hover:text-accent-primary rounded transition"
-                            >
-                              <Edit2 size={14} />
-                            </button>
-                            <button
-                              onClick={() => deleteClient(client.id)}
-                              className="p-1 text-foreground-muted hover:text-red-400 rounded transition"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            {stages.map(stage => {
+              const config = stageConfig[stage]
+              const stageClients = getClientsByStage(stage)
+              
+              return (
+                <div key={stage} className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className={`font-medium ${config.color}`}>{config.label}</h3>
+                    <span className="text-sm text-foreground-muted">{stageClients.length}</span>
+                  </div>
+                  
+                  <SortableContext items={stageClients.map(c => c.id)} strategy={verticalListSortingStrategy}>
+                    <DroppableColumn id={stage} config={config}>
+                      {stageClients.length === 0 ? (
+                        <div className="text-center py-8 text-foreground-muted text-sm">
+                          No {config.label.toLowerCase()}
                         </div>
-                        
-                        {client.project_title && (
-                          <p className="text-xs text-foreground-muted mb-3 line-clamp-2">{client.project_title}</p>
-                        )}
-                        
-                        {client.value && (
-                          <div className="flex items-center gap-1 text-accent-success text-sm mb-3">
-                            <DollarSign size={14} />
-                            {client.currency} {client.value.toLocaleString()}
-                          </div>
-                        )}
-                        
-                        {client.next_action && (
-                          <div className="text-xs bg-background p-2 rounded mb-3">
-                            <div className="text-foreground-muted mb-1">Next Action:</div>
-                            <div>{client.next_action}</div>
-                            {client.next_action_date && (
-                              <div className="text-foreground-muted mt-1 flex items-center gap-1">
-                                <Calendar size={12} />
-                                {new Date(client.next_action_date).toLocaleDateString()}
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        <div className="flex gap-1 flex-wrap">
-                          {stages.filter(s => s !== stage).slice(0, 2).map(s => (
-                            <button
-                              key={s}
-                              onClick={() => updateStage(client.id, s)}
-                              className="text-xs px-2 py-1 bg-background rounded hover:bg-accent-primary/20 transition capitalize"
-                            >
-                              → {stageConfig[s].label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ))
-                  )}
+                      ) : (
+                        stageClients.map(client => (
+                          <SortableClientCard
+                            key={client.id}
+                            client={client}
+                            config={config}
+                            onEdit={openEdit}
+                            onDelete={deleteClient}
+                            onUpdateStage={updateStage}
+                            stages={stages}
+                          />
+                        ))
+                      )}
+                    </DroppableColumn>
+                  </SortableContext>
                 </div>
+              )
+            })}
+          </div>
+          <DragOverlay>
+            {activeId ? (
+              <div className="bg-surface p-4 rounded-lg border-2 border-accent-primary shadow-2xl opacity-90 rotate-3">
+                <div className="text-sm font-medium">Dragging...</div>
               </div>
-            )
-          })}
-        </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       )}
 
       {showForm && (
