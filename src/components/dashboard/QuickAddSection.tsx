@@ -9,7 +9,6 @@ export default function QuickAddSection() {
   const [igHook, setIgHook] = useState('')
   const [loadingProject, setLoadingProject] = useState(false)
   const [loadingIg, setLoadingIg] = useState(false)
-  const supabase = createClient()
 
   const addProjectIdea = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -17,6 +16,7 @@ export default function QuickAddSection() {
     setLoadingProject(true)
 
     try {
+      const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
@@ -39,6 +39,7 @@ export default function QuickAddSection() {
     setLoadingIg(true)
 
     try {
+      const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 

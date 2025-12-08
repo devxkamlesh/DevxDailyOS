@@ -18,85 +18,121 @@ interface Activity {
 export default function RecentActivity() {
   const [activities, setActivities] = useState<Activity[]>([])
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
 
   useEffect(() => {
+    let mounted = true
+    
     const fetchActivity = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      const activities: Activity[] = []
-
-      // Fetch recent habit logs
-      const { data: habitLogs } = await supabase
-        .from('habit_logs')
-        .select('*, habits(name)')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(3)
-
-      habitLogs?.forEach(log => {
-        if (log.habits) {
-          activities.push({
-            id: log.id,
-            type: 'habit',
-            title: `Completed: ${log.habits.name}`,
-            timestamp: log.created_at,
-            icon: CheckCircle2,
-            color: 'text-accent-success',
-            link: '/habits'
-          })
+      try {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!mounted) return
+        
+        if (!user) {
+          setLoading(false)
+          return
         }
-      })
 
-      // Fetch recent projects
-      const { data: projects } = await supabase
-        .from('projects')
-        .select('name, created_at')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(2)
+        const activities: Activity[] = []
 
-      projects?.forEach(project => {
-        activities.push({
-          id: project.name,
-          type: 'project',
-          title: `New project: ${project.name}`,
-          timestamp: project.created_at,
-          icon: Rocket,
-          color: 'text-blue-400',
-          link: '/projects'
+        // Fetch recent habit logs
+        const { data: habitLogs, error: habitLogsError } = await supabase
+          .from('habit_logs')
+          .select('*, habits(name)')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(3)
+
+        if (habitLogsError) {
+          console.error('Error fetching habit logs:', habitLogsError)
+        }
+
+        habitLogs?.forEach(log => {
+          if (log.habits) {
+            activities.push({
+              id: log.id,
+              type: 'habit',
+              title: `Completed: ${log.habits.name}`,
+              timestamp: log.created_at,
+              icon: CheckCircle2,
+              color: 'text-accent-success',
+              link: '/habits'
+            })
+          }
         })
-      })
 
-      // Fetch recent Instagram posts
-      const { data: posts } = await supabase
-        .from('instagram_posts')
-        .select('title, hook, created_at')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(2)
+        // Fetch recent projects
+        const { data: projects, error: projectsError } = await supabase
+          .from('projects')
+          .select('name, created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(2)
 
-      posts?.forEach(post => {
-        activities.push({
-          id: post.title || post.hook || '',
-          type: 'instagram',
-          title: `New post: ${post.title || post.hook?.slice(0, 30) || 'Untitled'}`,
-          timestamp: post.created_at,
-          icon: Instagram,
-          color: 'text-purple-400',
-          link: '/instagram'
+        if (projectsError) {
+          console.error('Error fetching projects:', projectsError)
+        }
+
+        projects?.forEach(project => {
+          activities.push({
+            id: project.name,
+            type: 'project',
+            title: `New project: ${project.name}`,
+            timestamp: project.created_at,
+            icon: Rocket,
+            color: 'text-blue-400',
+            link: '/projects'
+          })
         })
-      })
 
-      // Sort by timestamp
-      activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        // Fetch recent Instagram posts
+        const { data: posts, error: postsError } = await supabase
+          .from('instagram_posts')
+          .select('title, hook, created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(2)
 
-      setActivities(activities.slice(0, 5))
-      setLoading(false)
+        if (postsError) {
+          console.error('Error fetching posts:', postsError)
+        }
+
+        posts?.forEach(post => {
+          activities.push({
+            id: post.title || post.hook || '',
+            type: 'instagram',
+            title: `New post: ${post.title || post.hook?.slice(0, 30) || 'Untitled'}`,
+            timestamp: post.created_at,
+            icon: Instagram,
+            color: 'text-purple-400',
+            link: '/instagram'
+          })
+        })
+
+        // Sort by timestamp
+        activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+
+        if (mounted) {
+          setActivities(activities.slice(0, 5))
+          setLoading(false)
+        }
+      } catch (error) {
+        console.error('Error in fetchActivity:', error)
+        if (mounted) setLoading(false)
+      }
     }
 
     fetchActivity()
+    
+    // Fallback timeout
+    const timeout = setTimeout(() => {
+      if (mounted) setLoading(false)
+    }, 5000)
+
+    return () => {
+      mounted = false
+      clearTimeout(timeout)
+    }
   }, [])
 
   const getTimeAgo = (timestamp: string) => {

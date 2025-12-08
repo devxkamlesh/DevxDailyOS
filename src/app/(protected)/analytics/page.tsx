@@ -917,8 +917,45 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
+          {/* Day of Week Analysis */}
+          <div className="bg-surface rounded-2xl p-6 border border-border-subtle">
+            <h2 className="text-xl font-bold mb-6">Success Rate by Day of Week</h2>
+            <div className="grid grid-cols-7 gap-2">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => {
+                const dayData = heatmapData.filter(d => {
+                  if (!d.date) return false
+                  const date = new Date(d.date + 'T12:00:00')
+                  return date.getDay() === index
+                })
+                const totalDays = dayData.length || 1
+                const activeDays = dayData.filter(d => d.count > 0).length
+                const percentage = Math.round((activeDays / totalDays) * 100)
+                const avgCompletions = dayData.length > 0 
+                  ? (dayData.reduce((sum, d) => sum + d.count, 0) / dayData.length).toFixed(1)
+                  : '0'
+                
+                return (
+                  <div key={day} className="text-center p-3 bg-background rounded-xl">
+                    <div className="text-sm font-medium text-foreground-muted mb-2">{day}</div>
+                    <div className={`text-2xl font-bold mb-1 ${
+                      percentage >= 80 ? 'text-accent-success' :
+                      percentage >= 60 ? 'text-blue-500' :
+                      percentage >= 40 ? 'text-yellow-500' :
+                      'text-red-500'
+                    }`}>
+                      {percentage}%
+                    </div>
+                    <div className="text-xs text-foreground-muted">
+                      ~{avgCompletions}/day
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
           {/* Insights */}
-          <div className="bg-gradient-to-br from-accent-primary/10 to-accent-primary/5 rounded-2xl p-6 border border-accent-primary/20">
+          <div className="bg-surface rounded-2xl p-6 border border-accent-primary/20">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 bg-accent-primary/20 rounded-lg">
                 <BarChart3 size={24} className="text-accent-primary" />

@@ -13,80 +13,115 @@ export default function StatsRow() {
     streak: 0
   })
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
 
   useEffect(() => {
+    let mounted = true
+    
     const fetchStats = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        setLoading(false)
-        return
-      }
-
-      const today = new Date().toISOString().split('T')[0]
-      
-      // Fetch habits and today's logs
-      const [habitsRes, logsRes] = await Promise.all([
-        supabase.from('habits').select('id, type, target_value').eq('user_id', user.id).eq('is_active', true),
-        supabase.from('habit_logs').select('habit_id, completed, value').eq('user_id', user.id).eq('date', today)
-      ])
-
-      const habits = habitsRes.data || []
-      const logs = logsRes.data || []
-
-      // Calculate completed habits
-      let completed = 0
-      habits.forEach(habit => {
-        const log = logs.find(l => l.habit_id === habit.id)
-        if (log) {
-          if (habit.type === 'boolean' && log.completed) completed++
-          else if (habit.type === 'numeric' && (log.value || 0) >= (habit.target_value || 1)) completed++
-        }
-      })
-
-      // Calculate streak (simplified - count consecutive days with at least one completed habit)
-      const { data: recentLogs } = await supabase
-        .from('habit_logs')
-        .select('date, completed')
-        .eq('user_id', user.id)
-        .eq('completed', true)
-        .order('date', { ascending: false })
-        .limit(30)
-
-      let streak = 0
-      if (recentLogs && recentLogs.length > 0) {
-        const uniqueDates = [...new Set(recentLogs.map(l => l.date))].sort().reverse()
-        const todayDate = new Date()
+      try {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!mounted) return
         
-        for (let i = 0; i < uniqueDates.length; i++) {
-          const checkDate = new Date(todayDate)
-          checkDate.setDate(checkDate.getDate() - i)
-          const checkDateStr = checkDate.toISOString().split('T')[0]
+        if (!user) {
+          setLoading(false)
+          return
+        }
+
+        const today = new Date().toISOString().split('T')[0]
+        
+        // Fetch habits and today's logs
+        const [habitsRes, logsRes] = await Promise.all([
+          supabase.from('habits').select('id, type, target_value').eq('user_id', user.id).eq('is_active', true),
+          supabase.from('habit_logs').select('habit_id, completed, value').eq('user_id', user.id).eq('date', today)
+        ])
+
+        if (habitsRes.error) {
+          console.error('Error fetching habits:', habitsRes.error)
+          setLoading(false)
+          return
+        }
+
+        if (logsRes.error) {
+          console.error('Error fetching logs:', logsRes.error)
+        }
+
+        const habits = habitsRes.data || []
+        const logs = logsRes.data || []
+
+        // Calculate completed habits
+        let completed = 0
+        habits.forEach(habit => {
+          const log = logs.find(l => l.habit_id === habit.id)
+          if (log) {
+            if (habit.type === 'boolean' && log.completed) completed++
+            else if (habit.type === 'numeric' && (log.value || 0) >= (habit.target_value || 1)) completed++
+          }
+        })
+
+        // Calculate streak (simplified - count consecutive days with at least one completed habit)
+        const { data: recentLogs, error: streakError } = await supabase
+          .from('habit_logs')
+          .select('date, completed')
+          .eq('user_id', user.id)
+          .eq('completed', true)
+          .order('date', { ascending: false })
+          .limit(30)
+
+        if (streakError) {
+          console.error('Error fetching streak:', streakError)
+        }
+
+        let streak = 0
+        if (recentLogs && recentLogs.length > 0) {
+          const uniqueDates = [...new Set(recentLogs.map(l => l.date))].sort().reverse()
+          const todayDate = new Date()
           
-          if (uniqueDates.includes(checkDateStr)) {
-            streak++
-          } else {
-            break
+          for (let i = 0; i < uniqueDates.length; i++) {
+            const checkDate = new Date(todayDate)
+            checkDate.setDate(checkDate.getDate() - i)
+            const checkDateStr = checkDate.toISOString().split('T')[0]
+            
+            if (uniqueDates.includes(checkDateStr)) {
+              streak++
+            } else {
+              break
+            }
           }
         }
+
+        // Deep work (sum of numeric habit values with 'min' unit for today)
+        const deepWorkLog = logs.find(l => {
+          const habit = habits.find(h => h.id === l.habit_id)
+          return habit?.type === 'numeric'
+        })
+
+        if (mounted) {
+          setStats({
+            habitsCompleted: completed,
+            habitsTotal: habits.length,
+            deepWorkMinutes: deepWorkLog?.value || 0,
+            streak
+          })
+          setLoading(false)
+        }
+      } catch (error) {
+        console.error('Error in fetchStats:', error)
+        if (mounted) setLoading(false)
       }
-
-      // Deep work (sum of numeric habit values with 'min' unit for today)
-      const deepWorkLog = logs.find(l => {
-        const habit = habits.find(h => h.id === l.habit_id)
-        return habit?.type === 'numeric'
-      })
-
-      setStats({
-        habitsCompleted: completed,
-        habitsTotal: habits.length,
-        deepWorkMinutes: deepWorkLog?.value || 0,
-        streak
-      })
-      setLoading(false)
     }
 
     fetchStats()
+    
+    // Fallback timeout
+    const timeout = setTimeout(() => {
+      if (mounted) setLoading(false)
+    }, 3000)
+
+    return () => {
+      mounted = false
+      clearTimeout(timeout)
+    }
   }, [])
 
   if (loading) {

@@ -23,62 +23,96 @@ interface DailyData {
 export default function MonthlyGraph() {
   const [dailyData, setDailyData] = useState<DailyData[]>([])
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
 
   useEffect(() => {
-    fetchMonthlyData()
-  }, [])
+    let mounted = true
+    
+    const fetchMonthlyData = async () => {
+      try {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!mounted) return
+        
+        if (!user) {
+          setLoading(false)
+          return
+        }
 
-  const fetchMonthlyData = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+      const now = new Date()
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      const daysInMonth = lastDay.getDate()
 
-    const now = new Date()
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-    const daysInMonth = lastDay.getDate()
+      // Fetch habits for this user
+      const { data: habits, error: habitsError } = await supabase
+        .from('habits')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
 
-    // Fetch habits for this user
-    const { data: habits } = await supabase
-      .from('habits')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('is_active', true)
+      if (habitsError) {
+        console.error('Error fetching habits:', habitsError)
+        setLoading(false)
+        return
+      }
 
-    const habitCount = habits?.length || 1
+      const habitCount = habits?.length || 1
 
-    // Fetch logs for current month for this user
-    const { data: logs } = await supabase
-      .from('habit_logs')
-      .select('date, completed')
-      .eq('user_id', user.id)
-      .gte('date', firstDay.toISOString().split('T')[0])
-      .lte('date', lastDay.toISOString().split('T')[0])
+      // Fetch logs for current month for this user
+      const { data: logs, error: logsError } = await supabase
+        .from('habit_logs')
+        .select('date, completed')
+        .eq('user_id', user.id)
+        .gte('date', firstDay.toISOString().split('T')[0])
+        .lte('date', lastDay.toISOString().split('T')[0])
 
-    // Process daily data
-    const daily: DailyData[] = []
+      if (logsError) {
+        console.error('Error fetching logs:', logsError)
+      }
 
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(now.getFullYear(), now.getMonth(), day)
-      const dateStr = date.toISOString().split('T')[0]
-      
-      const dayLogs = logs?.filter(log => log.date === dateStr) || []
-      const completed = dayLogs.filter(log => log.completed).length
-      const total = habitCount
-      const percentage = total > 0 ? Math.round((completed / total) * 100) : 0
+      // Process daily data
+      const daily: DailyData[] = []
 
-      daily.push({
-        date: dateStr,
-        day,
-        completed,
-        total,
-        percentage
-      })
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(now.getFullYear(), now.getMonth(), day)
+        const dateStr = date.toISOString().split('T')[0]
+        
+        const dayLogs = logs?.filter(log => log.date === dateStr) || []
+        const completed = dayLogs.filter(log => log.completed).length
+        const total = habitCount
+        const percentage = total > 0 ? Math.round((completed / total) * 100) : 0
+
+        daily.push({
+          date: dateStr,
+          day,
+          completed,
+          total,
+          percentage
+        })
+      }
+
+        if (mounted) {
+          setDailyData(daily)
+          setLoading(false)
+        }
+      } catch (error) {
+        console.error('Error in fetchMonthlyData:', error)
+        if (mounted) setLoading(false)
+      }
     }
 
-    setDailyData(daily)
-    setLoading(false)
-  }
+    fetchMonthlyData()
+    
+    // Fallback timeout
+    const timeout = setTimeout(() => {
+      if (mounted) setLoading(false)
+    }, 5000)
+
+    return () => {
+      mounted = false
+      clearTimeout(timeout)
+    }
+  }, [])
 
   if (loading) {
     return (

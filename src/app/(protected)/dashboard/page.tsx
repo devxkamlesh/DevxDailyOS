@@ -1,9 +1,9 @@
 import Header from '@/components/layout/Header'
 import StatsRow from '@/components/dashboard/StatsRow'
-import HabitsSection from '@/components/dashboard/HabitsSection'
 import MonthlyGraph from '@/components/dashboard/MonthlyGraph'
 import QuickAddSection from '@/components/dashboard/QuickAddSection'
 import RecentActivity from '@/components/dashboard/RecentActivity'
+import TodaysHabits from '@/components/dashboard/TodaysHabits'
 
 export default function DashboardPage() {
   return (
@@ -14,14 +14,12 @@ export default function DashboardPage() {
         {/* Stats Overview */}
         <StatsRow />
 
-        {/* Monthly Graph - Full Width */}
-        <MonthlyGraph />
-
-        {/* Main Content Grid */}
+        {/* Two Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Habits */}
+          {/* Left Column - Habits & Graph */}
           <div className="lg:col-span-2 space-y-6">
-            <HabitsSection />
+            <TodaysHabits />
+            <MonthlyGraph />
           </div>
 
           {/* Right Column - Quick Actions & Activity */}

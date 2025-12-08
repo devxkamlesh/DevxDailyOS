@@ -180,6 +180,16 @@ export default function HabitsPage() {
         return
       }
 
+      // Check active habit limit (30 max) - only for new habits
+      if (!editingHabit) {
+        const activeHabitsCount = habits.filter(h => h.is_active).length
+        if (activeHabitsCount >= 30) {
+          alert('You have reached the maximum limit of 30 active habits. Please archive some habits before creating new ones.')
+          setSaving(false)
+          return
+        }
+      }
+
       // Ensure profile exists
       const { data: profile } = await supabase
         .from('profiles')

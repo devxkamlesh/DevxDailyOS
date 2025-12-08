@@ -12,23 +12,56 @@ export default function HabitsSection() {
   const [habits, setHabits] = useState<Habit[]>([])
   const [logs, setLogs] = useState<HabitLog[]>([])
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
 
   const fetchData = async () => {
-    const today = new Date().toISOString().split('T')[0]
-    
-    const [habitsRes, logsRes] = await Promise.all([
-      supabase.from('habits').select('*').eq('is_active', true).order('created_at'),
-      supabase.from('habit_logs').select('*').eq('date', today)
-    ])
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setLoading(false)
+        return
+      }
 
-    if (habitsRes.data) setHabits(habitsRes.data)
-    if (logsRes.data) setLogs(logsRes.data)
-    setLoading(false)
+      const today = new Date().toISOString().split('T')[0]
+      
+      const [habitsRes, logsRes] = await Promise.all([
+        supabase.from('habits').select('*').eq('user_id', user.id).eq('is_active', true).order('created_at'),
+        supabase.from('habit_logs').select('*').eq('user_id', user.id).eq('date', today)
+      ])
+
+      if (habitsRes.error) {
+        console.error('Error fetching habits:', habitsRes.error)
+      }
+      if (logsRes.error) {
+        console.error('Error fetching logs:', logsRes.error)
+      }
+
+      if (habitsRes.data) setHabits(habitsRes.data)
+      if (logsRes.data) setLogs(logsRes.data)
+    } catch (error) {
+      console.error('Error in fetchData:', error)
+    }
   }
 
   useEffect(() => {
-    fetchData()
+    let mounted = true
+    
+    const loadData = async () => {
+      await fetchData()
+      if (mounted) setLoading(false)
+    }
+    
+    loadData()
+    
+    // Fallback timeout
+    const timeout = setTimeout(() => {
+      if (mounted) setLoading(false)
+    }, 5000)
+
+    return () => {
+      mounted = false
+      clearTimeout(timeout)
+    }
   }, [])
 
   const getLogForHabit = (habitId: string) => {
