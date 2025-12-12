@@ -16,7 +16,7 @@ import {
   Sparkles,
   Trophy,
   BookOpen,
-  Gift,
+  ShoppingCart,
   Medal,
   ChevronDown,
   ChevronRight
@@ -44,7 +44,7 @@ const navSections = [
     title: 'Gamification',
     items: [
       { href: '/achievements', label: 'Achievements', icon: Trophy },
-      { href: '/rewards', label: 'Rewards', icon: Gift },
+      { href: '/shop', label: 'Shop', icon: ShoppingCart },
       { href: '/leaderboard', label: 'Leaderboard', icon: Medal },
     ]
   },
@@ -69,12 +69,12 @@ export default function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [openSections, setOpenSections] = useState<string[]>([])
 
-  // Find which section contains the current page and open it by default
+  // Auto-collapse: only keep the section with active page open
   useEffect(() => {
     const activeSection = navSections.find(section =>
       section.items.some(item => pathname === item.href)
     )
-    if (activeSection && !openSections.includes(activeSection.title)) {
+    if (activeSection) {
       setOpenSections([activeSection.title])
     }
   }, [pathname])
@@ -83,7 +83,7 @@ export default function Sidebar() {
     setOpenSections(prev =>
       prev.includes(title)
         ? prev.filter(t => t !== title)
-        : [...prev, title]
+        : [...prev, title] // Allow multiple sections open
     )
   }
 
@@ -125,21 +125,23 @@ export default function Sidebar() {
               <div key={section.title}>
                 <button
                   onClick={() => toggleSection(section.title)}
-                  className={`w-full flex items-center justify-between px-4 py-2 rounded-lg transition hover:bg-background ${
+                  className={`w-full flex items-center justify-between px-4 py-2 rounded-lg transition-all duration-200 hover:bg-background ${
                     hasActivePage ? 'text-accent-primary' : 'text-foreground-muted'
                   }`}
                 >
                   <span className="text-xs font-semibold uppercase tracking-wider">
                     {section.title}
                   </span>
-                  {isOpen ? (
+                  <div className={`transition-transform duration-300 ${isOpen ? 'rotate-0' : '-rotate-90'}`}>
                     <ChevronDown size={14} />
-                  ) : (
-                    <ChevronRight size={14} />
-                  )}
+                  </div>
                 </button>
                 
-                {isOpen && (
+                <div 
+                  className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                    isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                  }`}
+                >
                   <div className="space-y-1 mt-1 mb-2">
                     {section.items.map(item => {
                       const isActive = pathname === item.href
@@ -151,7 +153,7 @@ export default function Sidebar() {
                           href={item.href}
                           onClick={() => setMobileOpen(false)}
                           className={`
-                            flex items-center gap-3 px-4 py-2.5 rounded-xl transition
+                            flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200
                             ${isActive 
                               ? 'bg-accent-primary/10 text-accent-primary' 
                               : 'text-foreground-muted hover:bg-background hover:text-foreground'
@@ -164,7 +166,7 @@ export default function Sidebar() {
                       )
                     })}
                   </div>
-                )}
+                </div>
               </div>
             )
           })}

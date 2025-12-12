@@ -157,17 +157,17 @@ export default function RecentActivity() {
       </div>
 
       {loading ? (
-        <div className="text-center py-8 text-foreground-muted text-sm">
+        <div className="text-center py-4 text-foreground-muted text-sm">
           Loading...
         </div>
       ) : activities.length === 0 ? (
-        <div className="text-center py-8">
+        <div className="text-center py-4">
           <p className="text-foreground-muted text-sm mb-2">No recent activity</p>
           <p className="text-xs text-foreground-muted">Start by adding a habit or project</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {activities.map((activity, index) => {
+          {activities.slice(0, 3).map((activity, index) => {
             const Icon = activity.icon
             return (
               <Link

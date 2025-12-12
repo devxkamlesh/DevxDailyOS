@@ -1,16 +1,34 @@
 # DevX Daily OS
 
-A minimal, high-demand daily operating system for developers, creators, and freelancers.
+A gamified habit tracking and productivity app for developers, creators, and freelancers.
+
+## Features
+
+- **Habit Tracking** - Boolean and numeric habits with daily logging
+- **XP & Level System** - Earn XP for completing habits, level up automatically
+- **Coin System** - Earn coins to unlock themes and profile icons
+- **Achievements** - 18 achievements to unlock and claim rewards
+- **Streak Tracking** - Current streak, longest streak, perfect days
+- **Themes** - 8 customizable themes (Ocean, Sunset, Forest, Purple, Gold, Rose, Midnight)
+- **Profile Icons** - 36 icons (6 free, 30 premium)
+- **Leaderboard** - Compete with other users
+- **Analytics** - Charts and insights for your progress
+- **Projects & Tasks** - Manage side projects and todos
+- **Instagram Planner** - Plan and schedule content
+- **Freelance CRM** - Track clients and projects
+- **Daily Journal** - Mood tracking and reflections
 
 ## Tech Stack
 
-- **Next.js 15** (App Router)
+- **Next.js 16** (App Router + Turbopack)
+- **React 19**
 - **TypeScript**
-- **Tailwind CSS**
-- **Supabase** (Postgres + Auth + Realtime)
+- **Tailwind CSS 4**
+- **Supabase** (Postgres + Auth)
+- **Recharts** (Analytics)
 - **Lucide React** (Icons)
 
-## Getting Started
+## Quick Start
 
 ### 1. Install Dependencies
 
@@ -18,70 +36,76 @@ A minimal, high-demand daily operating system for developers, creators, and free
 npm install
 ```
 
-### 2. Set Up Supabase
+### 2. Setup Supabase
 
-1. Create a new project at [supabase.com](https://supabase.com)
-2. Copy your project URL and anon key
-3. Create `.env.local` file:
+1. Create project at [supabase.com](https://supabase.com)
+2. Create `.env.local`:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 ```
 
-### 3. Run Database Migrations
+### 3. Setup Database
 
-Run the SQL from `DESIGN.md` section 6 in your Supabase SQL editor to create the database schema.
+1. Go to Supabase Dashboard → SQL Editor
+2. Copy & paste `supabase-master-schema-v1.sql`
+3. Click Run
 
-### 4. Start Development Server
+### 4. Start Development
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see your app.
+Open [http://localhost:3000](http://localhost:3000)
+
+## Database
+
+Single schema file: `supabase-master-schema-v1.sql`
+
+**Tables (15):**
+- profiles, habits, habit_logs
+- user_rewards, coin_awards, xp_awards
+- user_achievements, weekly_challenge_claims
+- notification_settings
+- projects, tasks
+- instagram_posts, freelance_clients
+- user_settings, daily_journal
+
+**Includes:**
+- All RLS policies
+- 30+ indexes for performance
+- 11 auto-update triggers
+- Data validation constraints
+- Public profiles view for leaderboard
 
 ## Project Structure
 
 ```
 src/
-├── app/              # Next.js app router pages
-│   ├── dashboard/    # Dashboard page
-│   ├── login/        # Login page
-│   └── ...
-├── lib/              # Utilities and configurations
-│   └── supabase/     # Supabase client setup
-└── components/       # Reusable components (to be added)
+├── app/
+│   ├── (protected)/     # Auth-required pages
+│   │   ├── dashboard/
+│   │   ├── habits/
+│   │   ├── achievements/
+│   │   ├── shop/
+│   │   ├── leaderboard/
+│   │   ├── analytics/
+│   │   ├── settings/
+│   │   └── ...
+│   └── login/
+├── components/
+│   ├── dashboard/       # Dashboard widgets
+│   ├── layout/          # Sidebar, navigation
+│   └── ThemeProvider.tsx
+└── lib/
+    ├── supabase/        # Supabase clients
+    ├── xp.ts            # XP & level system
+    ├── coins-fixed.ts   # Coin system
+    ├── achievements.ts  # Achievement claiming
+    └── profile-icons.tsx
 ```
-
-## Features (MVP)
-
-- ✅ Project setup with Next.js + TypeScript + Tailwind
-- ✅ Supabase integration
-- ✅ Design system implementation
-- 🚧 Authentication (email/password)
-- 🚧 Dashboard with stats
-- 🚧 Habit tracking
-- 🚧 Project management
-- 🚧 Task management
-
-## Design Principles
-
-- Minimal UI, no clutter
-- Daily use within 2–5 minutes
-- Mobile-first, thumb-friendly
-- Every screen answers: "What should I do next?"
-
-## Development Roadmap
-
-### Week 1
-- Auth + profiles + dashboard skeleton
-
-### Week 2
-- Habits list + toggle + logs
-
-### Week 3
-- Projects + tasks + quick ideas + deploy to Vercel
 
 ## License
 

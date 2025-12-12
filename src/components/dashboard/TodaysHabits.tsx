@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { CheckCircle2, Circle, Plus, Minus, Target } from 'lucide-react'
+import { CheckCircle2, Circle, Target, TrendingUp, Sunrise, Briefcase, Moon, Heart, Zap, Plus, Minus } from 'lucide-react'
 import Link from 'next/link'
 
 interface Habit {
@@ -10,22 +10,25 @@ interface Habit {
   name: string
   type: 'boolean' | 'numeric'
   target_value: number | null
-  target_unit: string | null
   category: string
-  emoji: string | null
   completedToday: boolean
   currentValue: number
 }
 
-const getCategoryColor = (category: string) => {
-  const colors: Record<string, { bg: string; text: string; border: string }> = {
-    morning: { bg: 'bg-orange-500/10', text: 'text-orange-500', border: 'border-orange-500/30' },
-    work: { bg: 'bg-blue-500/10', text: 'text-blue-500', border: 'border-blue-500/30' },
-    night: { bg: 'bg-purple-500/10', text: 'text-purple-500', border: 'border-purple-500/30' },
-    health: { bg: 'bg-green-500/10', text: 'text-green-500', border: 'border-green-500/30' },
-    focus: { bg: 'bg-yellow-500/10', text: 'text-yellow-500', border: 'border-yellow-500/30' },
-  }
-  return colors[category] || { bg: 'bg-gray-500/10', text: 'text-gray-500', border: 'border-gray-500/30' }
+const categoryIcons: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+  morning: Sunrise,
+  work: Briefcase,
+  night: Moon,
+  health: Heart,
+  focus: Zap,
+}
+
+const categoryColors: Record<string, string> = {
+  morning: 'text-orange-500',
+  work: 'text-blue-500',
+  night: 'text-purple-500',
+  health: 'text-green-500',
+  focus: 'text-yellow-500',
 }
 
 export default function TodaysHabits() {
@@ -43,35 +46,23 @@ export default function TodaysHabits() {
 
       const today = new Date().toISOString().split('T')[0]
 
-      // Fetch active habits
-      const { data: habitsData, error: habitsError } = await supabase
+      const { data: habitsData } = await supabase
         .from('habits')
         .select('*')
         .eq('user_id', user.id)
         .eq('is_active', true)
         .order('created_at')
 
-      if (habitsError) {
-        console.error('Error fetching habits:', habitsError)
-        setLoading(false)
-        return
-      }
-
       if (!habitsData) {
         setLoading(false)
         return
       }
 
-      // Fetch today's logs
-      const { data: logs, error: logsError } = await supabase
+      const { data: logs } = await supabase
         .from('habit_logs')
         .select('habit_id, completed, value')
         .eq('user_id', user.id)
         .eq('date', today)
-
-      if (logsError) {
-        console.error('Error fetching logs:', logsError)
-      }
 
       const habitsWithStatus = habitsData.map(habit => {
         const log = logs?.find(l => l.habit_id === habit.id)
@@ -83,9 +74,7 @@ export default function TodaysHabits() {
           name: habit.name,
           type: habit.type,
           target_value: habit.target_value,
-          target_unit: habit.target_unit,
           category: habit.category,
-          emoji: habit.emoji,
           completedToday,
           currentValue
         }
@@ -94,125 +83,225 @@ export default function TodaysHabits() {
       setHabits(habitsWithStatus)
     } catch (error) {
       console.error('Error in fetchHabits:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
   useEffect(() => {
-    let mounted = true
-    
-    const loadHabits = async () => {
-      await fetchHabits()
-      if (mounted) setLoading(false)
-    }
-    
-    loadHabits()
-    
-    // Fallback timeout
-    const timeout = setTimeout(() => {
-      if (mounted) setLoading(false)
-    }, 5000)
-
-    return () => {
-      mounted = false
-      clearTimeout(timeout)
-    }
+    fetchHabits()
   }, [])
 
-  const addCoins = async (userId: string, amount: number) => {
-    const supabase = createClient()
-    // Get current coins
-    const { data: rewards } = await supabase
-      .from('user_rewards')
-      .select('coins')
-      .eq('user_id', userId)
-      .single()
+  const [processing, setProcessing] = useState<Set<string>>(new Set())
+
+  const toggleHabit = async (habit: Habit) => {
+    // Prevent double-clicking
+    if (processing.has(habit.id)) return
     
-    if (rewards) {
-      await supabase
-        .from('user_rewards')
-        .update({ coins: rewards.coins + amount })
-        .eq('user_id', userId)
-    }
-  }
+    const wasCompleted = habit.completedToday
+    const newCompleted = !wasCompleted
+    
+    // For numeric habits: toggle between 0 and target_value
+    const newValue = habit.type === 'numeric' 
+      ? (newCompleted ? (habit.target_value || 1) : 0)
+      : null
+    
+    // Mark as processing
+    setProcessing(prev => new Set(prev).add(habit.id))
+    
+    // Optimistic update
+    setHabits(prev => prev.map(h => 
+      h.id === habit.id 
+        ? { ...h, completedToday: newCompleted, currentValue: newValue ?? h.currentValue } 
+        : h
+    ))
 
-  const toggleBoolean = async (habitId: string, currentStatus: boolean) => {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
-    const today = new Date().toISOString().split('T')[0]
-    const newStatus = !currentStatus
-
-    await supabase.from('habit_logs').upsert({
-      user_id: user.id,
-      habit_id: habitId,
-      date: today,
-      completed: newStatus,
-      value: null
-    }, { onConflict: 'user_id,habit_id,date' })
-
-    // Award coins for completing (not uncompleting)
-    if (newStatus) {
-      await addCoins(user.id, 5)
+    if (!user) {
+      setHabits(prev => prev.map(h => 
+        h.id === habit.id ? { ...h, completedToday: wasCompleted, currentValue: habit.currentValue } : h
+      ))
+      setProcessing(prev => {
+        const next = new Set(prev)
+        next.delete(habit.id)
+        return next
+      })
+      return
     }
 
-    fetchHabits()
-  }
-
-  const updateNumeric = async (habitId: string, currentValue: number, change: number, targetValue: number) => {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
     const today = new Date().toISOString().split('T')[0]
-    const newValue = Math.max(0, currentValue + change)
-    const completed = newValue >= targetValue
 
-    await supabase.from('habit_logs').upsert({
+    // Update habit log
+    const { error: logError } = await supabase.from('habit_logs').upsert({
       user_id: user.id,
-      habit_id: habitId,
+      habit_id: habit.id,
       date: today,
-      completed,
+      completed: newCompleted,
       value: newValue
     }, { onConflict: 'user_id,habit_id,date' })
 
-    fetchHabits()
+    if (logError) {
+      setHabits(prev => prev.map(h => 
+        h.id === habit.id ? { ...h, completedToday: wasCompleted, currentValue: habit.currentValue } : h
+      ))
+      setProcessing(prev => {
+        const next = new Set(prev)
+        next.delete(habit.id)
+        return next
+      })
+      return
+    }
+
+    // Handle coins and XP with proper tracking
+    if (newCompleted && !wasCompleted) {
+      // Award coins
+      const { awardHabitCoins } = await import('@/lib/coins-fixed')
+      const coinResult = await awardHabitCoins(user.id, habit.id, today)
+      
+      if (!coinResult.success) {
+        console.warn('Coin award failed:', coinResult.message)
+      }
+
+      // Award XP
+      const { awardHabitXP } = await import('@/lib/xp')
+      const xpResult = await awardHabitXP(user.id, habit.id, today)
+      
+      if (!xpResult.success) {
+        console.warn('XP award failed:', xpResult.message)
+      }
+    } else if (!newCompleted && wasCompleted) {
+      // Deduct coins
+      const { deductHabitCoins } = await import('@/lib/coins-fixed')
+      const coinResult = await deductHabitCoins(user.id, habit.id, today)
+      
+      if (!coinResult.success) {
+        console.warn('Coin deduction failed:', coinResult.message)
+      }
+
+      // Deduct XP
+      const { deductHabitXP } = await import('@/lib/xp')
+      const xpResult = await deductHabitXP(user.id, habit.id, today)
+      
+      if (!xpResult.success) {
+        console.warn('XP deduction failed:', xpResult.message)
+      }
+    }
+
+    setProcessing(prev => {
+      const next = new Set(prev)
+      next.delete(habit.id)
+      return next
+    })
   }
 
-  const quickComplete = async (habitId: string, targetValue: number) => {
+  const updateNumericValue = async (habitId: string, delta: number) => {
+    // Prevent double-clicking
+    if (processing.has(habitId)) return
+    
+    const habit = habits.find(h => h.id === habitId)
+    if (!habit) return
+
+    const newValue = Math.max(0, habit.currentValue + delta)
+    const wasCompleted = habit.completedToday
+    const isNowCompleted = newValue >= (habit.target_value || 1)
+    
+    // Mark as processing
+    setProcessing(prev => new Set(prev).add(habitId))
+    
+    setHabits(prev => prev.map(h => 
+      h.id === habitId ? { ...h, currentValue: newValue, completedToday: isNowCompleted } : h
+    ))
+
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) {
+      setHabits(prev => prev.map(h => 
+        h.id === habitId ? { ...h, currentValue: habit.currentValue, completedToday: wasCompleted } : h
+      ))
+      setProcessing(prev => {
+        const next = new Set(prev)
+        next.delete(habitId)
+        return next
+      })
+      return
+    }
 
     const today = new Date().toISOString().split('T')[0]
 
-    await supabase.from('habit_logs').upsert({
+    const { error } = await supabase.from('habit_logs').upsert({
       user_id: user.id,
       habit_id: habitId,
       date: today,
-      completed: true,
-      value: targetValue
+      completed: isNowCompleted,
+      value: newValue
     }, { onConflict: 'user_id,habit_id,date' })
 
-    // Award coins for completing
-    await addCoins(user.id, 5)
+    if (error) {
+      setHabits(prev => prev.map(h => 
+        h.id === habitId ? { ...h, currentValue: habit.currentValue, completedToday: wasCompleted } : h
+      ))
+      setProcessing(prev => {
+        const next = new Set(prev)
+        next.delete(habitId)
+        return next
+      })
+      return
+    }
 
-    fetchHabits()
+    // Handle coins and XP with proper tracking
+    if (!wasCompleted && isNowCompleted) {
+      // Award coins
+      const { awardHabitCoins } = await import('@/lib/coins-fixed')
+      const coinResult = await awardHabitCoins(user.id, habitId, today)
+      
+      if (!coinResult.success) {
+        console.warn('Coin award failed:', coinResult.message)
+      }
+
+      // Award XP
+      const { awardHabitXP } = await import('@/lib/xp')
+      const xpResult = await awardHabitXP(user.id, habitId, today)
+      
+      if (!xpResult.success) {
+        console.warn('XP award failed:', xpResult.message)
+      }
+    } else if (wasCompleted && !isNowCompleted) {
+      // Deduct coins
+      const { deductHabitCoins } = await import('@/lib/coins-fixed')
+      const coinResult = await deductHabitCoins(user.id, habitId, today)
+      
+      if (!coinResult.success) {
+        console.warn('Coin deduction failed:', coinResult.message)
+      }
+
+      // Deduct XP
+      const { deductHabitXP } = await import('@/lib/xp')
+      const xpResult = await deductHabitXP(user.id, habitId, today)
+      
+      if (!xpResult.success) {
+        console.warn('XP deduction failed:', xpResult.message)
+      }
+    }
+
+    setProcessing(prev => {
+      const next = new Set(prev)
+      next.delete(habitId)
+      return next
+    })
   }
 
   const completedCount = habits.filter(h => h.completedToday).length
   const totalCount = habits.length
+  const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
 
   if (loading) {
     return (
-      <div className="bg-surface p-6 rounded-2xl border border-border-subtle">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Today's Habits</h2>
-          <div className="text-sm text-foreground-muted">Loading...</div>
-        </div>
-        <div className="space-y-2">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-12 bg-background rounded-lg animate-pulse" />
+      <div className="bg-surface p-6 rounded-2xl border border-border-subtle h-[600px]">
+        <div className="h-10 bg-background rounded-lg animate-pulse mb-4" />
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-16 bg-background rounded-xl animate-pulse" />
           ))}
         </div>
       </div>
@@ -220,153 +309,122 @@ export default function TodaysHabits() {
   }
 
   return (
-    <div className="bg-surface rounded-2xl border border-border-subtle overflow-hidden">
-      {/* Header with Progress */}
-      <div className="p-6 pb-4 border-b border-border-subtle">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xl font-bold">Today's Habits</h2>
-          <Link 
-            href="/habits"
-            className="text-sm text-accent-primary hover:underline font-medium"
-          >
-            Manage →
-          </Link>
+    <div className="bg-surface p-6 rounded-2xl border border-border-subtle h-[600px] flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Target className="text-accent-primary" size={20} />
+          <h2 className="text-lg font-bold">Today&apos;s Habits</h2>
         </div>
-        
-        {/* Progress Bar */}
-        {totalCount > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-foreground-muted">Progress</span>
-              <span className="font-semibold text-accent-primary">
-                {completedCount}/{totalCount} completed
-              </span>
-            </div>
-            <div className="h-2 bg-background rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-accent-primary to-accent-success transition-all duration-500"
-                style={{ width: `${(completedCount / totalCount) * 100}%` }}
-              />
-            </div>
-          </div>
-        )}
+        <div className="text-sm font-medium text-accent-primary">{completedCount}/{totalCount}</div>
+      </div>
+      
+      {/* Progress bar */}
+      <div className="h-1.5 bg-background rounded-full overflow-hidden mb-4">
+        <div 
+          className="h-full bg-gradient-to-r from-accent-primary to-accent-success transition-all duration-300"
+          style={{ width: `${percentage}%` }}
+        />
       </div>
 
-      {/* Habits List */}
-      <div className="p-6 pt-4">
+      {/* Habits list with custom slim scrollbar */}
+      <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
         {habits.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-accent-primary/10 flex items-center justify-center">
-              <Target size={32} className="text-accent-primary" />
-            </div>
-            <h3 className="font-semibold mb-2">No habits yet</h3>
-            <p className="text-sm text-foreground-muted mb-4">Start building your daily routine</p>
-            <Link 
-              href="/habits"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-accent-primary text-white rounded-lg hover:opacity-90 transition font-medium"
-            >
-              <Plus size={18} />
-              Create First Habit
+          <div className="text-center py-8 text-foreground-muted">
+            <Target size={40} className="mx-auto mb-3 opacity-40" />
+            <p className="text-sm mb-2">No habits yet</p>
+            <Link href="/habits" className="text-xs text-accent-primary hover:underline">
+              Create your first habit →
             </Link>
           </div>
         ) : (
-          <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
-            {habits.map(habit => {
-              const categoryStyle = getCategoryColor(habit.category)
-              return (
-                <button
-                  key={habit.id}
-                  onClick={() => {
-                    if (habit.completedToday) return
-                    if (habit.type === 'boolean') {
-                      toggleBoolean(habit.id, habit.completedToday)
-                    } else {
-                      quickComplete(habit.id, habit.target_value || 1)
-                    }
-                  }}
-                  disabled={habit.completedToday}
-                  className={`group w-full p-4 rounded-xl border-2 transition-all text-left ${
-                    habit.completedToday 
-                      ? 'bg-gradient-to-br from-accent-success/10 to-accent-success/5 border-accent-success/40 cursor-default' 
-                      : 'bg-background border-border-subtle hover:border-accent-primary/40 hover:shadow-lg hover:scale-[1.01]'
-                  }`}
-                >
-                  <div className="flex items-start gap-4">
-                    {/* Checkbox */}
-                    <div className={`flex-shrink-0 w-7 h-7 rounded-lg border-2 flex items-center justify-center transition-all ${
-                      habit.completedToday 
-                        ? 'bg-accent-success border-accent-success shadow-sm' 
-                        : 'border-border-subtle group-hover:border-accent-primary group-hover:bg-accent-primary/5'
-                    }`}>
-                      {habit.completedToday ? (
-                        <CheckCircle2 size={18} className="text-white" strokeWidth={2.5} />
-                      ) : (
-                        <div className="w-3 h-3 rounded-sm border-2 border-foreground-muted/30 group-hover:border-accent-primary transition-colors" />
-                      )}
-                    </div>
+          habits.map(habit => {
+            const IconComponent = categoryIcons[habit.category] || Target
+            const colorClass = categoryColors[habit.category] || 'text-gray-500'
+            
+            return (
+              <div
+                key={habit.id}
+                className={`p-3 rounded-xl border transition-all ${
+                  habit.completedToday
+                    ? 'bg-accent-success/10 border-accent-success/30'
+                    : 'bg-background border-border-subtle hover:border-border-subtle/80'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  {/* Checkbox - works for both types */}
+                  <button
+                    onClick={() => toggleHabit(habit)}
+                    className={`flex-shrink-0 transition-all ${
+                      habit.completedToday ? 'text-accent-success' : 'text-foreground-muted hover:text-accent-primary'
+                    }`}
+                  >
+                    {habit.completedToday ? (
+                      <CheckCircle2 size={22} strokeWidth={2.5} />
+                    ) : (
+                      <Circle size={22} strokeWidth={2} />
+                    )}
+                  </button>
 
-                    {/* Habit Info */}
-                    <div className="flex-1 min-w-0">
-                      {/* Title Row */}
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          {habit.emoji && (
-                            <span className="text-lg flex-shrink-0">{habit.emoji}</span>
-                          )}
-                          <span className={`font-semibold text-base transition-all ${
-                            habit.completedToday ? 'line-through text-foreground-muted' : 'text-foreground'
-                          }`}>
-                            {habit.name}
-                          </span>
-                        </div>
-                        
-                        {/* Category Badge */}
-                        {habit.category && (
-                          <span className={`text-xs font-medium px-2.5 py-1 rounded-full border flex-shrink-0 ${categoryStyle.bg} ${categoryStyle.text} ${categoryStyle.border}`}>
-                            {habit.category}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Details Row */}
-                      <div className="flex items-center gap-3">
-                        {habit.type === 'numeric' && (
-                          <>
-                            {/* Progress Bar */}
-                            <div className="flex-1 h-2 bg-surface rounded-full overflow-hidden">
-                              <div 
-                                className={`h-full transition-all duration-500 ${
-                                  habit.completedToday 
-                                    ? 'bg-accent-success' 
-                                    : 'bg-gradient-to-r from-accent-primary to-accent-primary/70'
-                                }`}
-                                style={{ width: `${Math.min((habit.currentValue / (habit.target_value || 1)) * 100, 100)}%` }}
-                              />
-                            </div>
-                            
-                            {/* Target Badge */}
-                            <span className={`text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0 ${
-                              habit.completedToday 
-                                ? 'bg-accent-success/20 text-accent-success' 
-                                : 'bg-accent-primary/10 text-accent-primary'
-                            }`}>
-                              {habit.completedToday ? '✓ ' : ''}{habit.target_value} {habit.target_unit}
-                            </span>
-                          </>
-                        )}
-                        
-                        {habit.type === 'boolean' && !habit.completedToday && (
-                          <span className="text-xs text-foreground-muted">Click to complete</span>
-                        )}
-                      </div>
-                    </div>
+                  {/* Icon */}
+                  <div className={`flex-shrink-0 p-1.5 rounded-lg ${habit.completedToday ? 'bg-accent-success/20' : 'bg-surface'}`}>
+                    <IconComponent size={14} className={colorClass} />
                   </div>
-                </button>
-              )
-            })}
-          </div>
+
+                  {/* Name & Progress */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className={`text-sm font-medium truncate ${
+                      habit.completedToday ? 'text-foreground-muted line-through' : 'text-foreground'
+                    }`}>
+                      {habit.name}
+                    </h3>
+                    {habit.type === 'numeric' && (
+                      <div className="text-xs text-foreground-muted">
+                        {habit.currentValue} / {habit.target_value}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Numeric controls or coin badge */}
+                  {habit.type === 'numeric' ? (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); updateNumericValue(habit.id, -1) }}
+                        disabled={habit.currentValue <= 0}
+                        className="w-6 h-6 rounded-md bg-surface border border-border-subtle flex items-center justify-center hover:border-accent-primary disabled:opacity-40 disabled:cursor-not-allowed text-xs"
+                      >
+                        <Minus size={12} />
+                      </button>
+                      <span className="w-5 text-center text-xs font-medium">{habit.currentValue}</span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); updateNumericValue(habit.id, 1) }}
+                        className="w-6 h-6 rounded-md bg-surface border border-border-subtle flex items-center justify-center hover:border-accent-primary text-xs"
+                      >
+                        <Plus size={12} />
+                      </button>
+                    </div>
+                  ) : !habit.completedToday && (
+                    <div className="px-2 py-0.5 bg-yellow-500/10 rounded text-xs font-bold text-yellow-500">
+                      +1
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })
         )}
       </div>
+
+      {/* Footer */}
+      {habits.length > 0 && (
+        <Link 
+          href="/habits" 
+          className="flex items-center justify-center gap-1.5 mt-4 pt-3 border-t border-border-subtle text-xs text-accent-primary hover:underline font-medium"
+        >
+          <TrendingUp size={14} />
+          Manage All Habits
+        </Link>
+      )}
     </div>
   )
 }

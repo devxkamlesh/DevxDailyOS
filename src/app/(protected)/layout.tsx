@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
+import { ThemeProvider } from '@/components/ThemeProvider'
 
 export default async function ProtectedLayout({
   children,
@@ -15,13 +16,15 @@ export default async function ProtectedLayout({
   }
 
   return (
-    <div className="min-h-screen">
-      <Sidebar />
-      <main className="md:ml-64 p-6 md:p-10">
-        <div className="max-w-6xl mx-auto">
-          {children}
-        </div>
-      </main>
-    </div>
+    <ThemeProvider>
+      <div className="min-h-screen">
+        <Sidebar />
+        <main className="md:ml-64 p-6 md:p-10">
+          <div className="max-w-6xl mx-auto">
+            {children}
+          </div>
+        </main>
+      </div>
+    </ThemeProvider>
   )
 }

@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Trophy, Award, Zap, Target, Star, Crown, Flame, TrendingUp, Calendar, CheckCircle2, Lock } from 'lucide-react'
-import Link from 'next/link'
+import { Trophy, Award, Zap, Target, Star, Crown, Flame, Calendar, CheckCircle2, Lock, Coins, Gift } from 'lucide-react'
+import { ACHIEVEMENTS, getClaimedAchievements, claimAchievement, updateUserStreak } from '@/lib/achievements'
 
 interface Achievement {
   id: string
@@ -11,78 +11,80 @@ interface Achievement {
   description: string
   icon: any
   color: string
-  gradient: string
   unlocked: boolean
+  claimed: boolean
   progress: number
   target: number
+  coinReward: number
   xpReward: number
+  category: 'completion' | 'streak' | 'perfect' | 'milestone'
+}
+
+interface WeeklyChallenge {
+  id: string
+  title: string
+  description: string
+  progress: number
+  target: number
+  coinReward: number
+  icon: any
+  color: string
+  endsIn: string
 }
 
 interface UserStats {
-  level: number
-  xp: number
-  xpToNextLevel: number
+  totalCoins: number
   totalCompletions: number
   currentStreak: number
   longestStreak: number
   perfectDays: number
+  xp: number
+  level: number
 }
 
 export default function AchievementsPage() {
   const [stats, setStats] = useState<UserStats>({
-    level: 1,
-    xp: 0,
-    xpToNextLevel: 100,
+    totalCoins: 0,
     totalCompletions: 0,
     currentStreak: 0,
     longestStreak: 0,
-    perfectDays: 0
+    perfectDays: 0,
+    xp: 0,
+    level: 1
   })
   const [achievements, setAchievements] = useState<Achievement[]>([])
+  const [weeklyChallenges, setWeeklyChallenges] = useState<WeeklyChallenge[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    let mounted = true
-    
-    const loadData = async () => {
-      await fetchGamificationData()
-      if (mounted) setLoading(false)
-    }
-    
-    loadData()
-    
-    // Fallback timeout
-    const timeout = setTimeout(() => {
-      if (mounted) setLoading(false)
-    }, 5000)
-
-    return () => {
-      mounted = false
-      clearTimeout(timeout)
-    }
+    fetchData()
   }, [])
 
-  const fetchGamificationData = async () => {
+  const [claiming, setClaiming] = useState<string | null>(null)
+
+  const fetchData = async () => {
     try {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        return
-      }
+      if (!user) return
 
-      // Fetch all habit logs
-      const { data: logs, error: logsError } = await supabase
+      // Fetch user rewards (coins, xp, level)
+      const { data: rewards } = await supabase
+        .from('user_rewards')
+        .select('coins, xp, level')
+        .eq('user_id', user.id)
+        .single()
+
+      // Fetch claimed achievements
+      const claimedIds = await getClaimedAchievements(user.id)
+
+      // Fetch habit logs
+      const { data: logs } = await supabase
         .from('habit_logs')
         .select('*')
         .eq('user_id', user.id)
         .eq('completed', true)
         .order('date', { ascending: false })
-
-      if (logsError) {
-        console.error('Error fetching logs:', logsError)
-        setLoading(false)
-        return
-      }
 
       if (!logs) {
         setLoading(false)
@@ -114,16 +116,15 @@ export default function AchievementsPage() {
         }
       }
 
+      // Save streak to database
+      await updateUserStreak(user.id, currentStreak, longestStreak)
+
       // Calculate perfect days
-      const { data: habits, error: habitsError } = await supabase
+      const { data: habits } = await supabase
         .from('habits')
         .select('id')
         .eq('user_id', user.id)
         .eq('is_active', true)
-
-      if (habitsError) {
-        console.error('Error fetching habits:', habitsError)
-      }
 
       const habitCount = habits?.length || 1
       const dateCompletions = new Map<string, number>()
@@ -134,603 +135,245 @@ export default function AchievementsPage() {
       
       const perfectDays = Array.from(dateCompletions.values()).filter(count => count >= habitCount).length
 
-      // Calculate level and XP
-      const xp = totalCompletions * 10 + currentStreak * 50 + perfectDays * 100
-      const level = Math.floor(xp / 100) + 1
-      const xpToNextLevel = (level * 100) - xp
-
       setStats({
-        level,
-        xp,
-        xpToNextLevel,
+        totalCoins: rewards?.coins || 0,
         totalCompletions,
         currentStreak,
         longestStreak,
-        perfectDays
+        perfectDays,
+        xp: rewards?.xp || 0,
+        level: rewards?.level || 1
       })
 
-      // Define achievements
-      const achievementsList: Achievement[] = [
-        {
-          id: 'first_step',
-          title: 'First Step',
-          description: 'Complete your first habit',
-          icon: CheckCircle2,
-          color: 'text-green-500',
-          gradient: '',
-          unlocked: totalCompletions >= 1,
-          progress: Math.min(totalCompletions, 1),
-          target: 1,
-          xpReward: 50
-        },
-        {
-          id: 'early_bird',
-          title: 'Early Bird',
-          description: 'Complete 5 habits',
-          icon: Target,
-          color: 'text-blue-500',
-          gradient: '',
-          unlocked: totalCompletions >= 5,
-          progress: Math.min(totalCompletions, 5),
-          target: 5,
-          xpReward: 75
-        },
-        {
-          id: 'getting_started',
-          title: 'Getting Started',
-          description: 'Complete 10 habits',
-          icon: Target,
-          color: 'text-cyan-500',
-          gradient: '',
-          unlocked: totalCompletions >= 10,
-          progress: Math.min(totalCompletions, 10),
-          target: 10,
-          xpReward: 100
-        },
-        {
-          id: 'consistent',
-          title: 'Consistent',
-          description: 'Complete 25 habits',
-          icon: Award,
-          color: 'text-indigo-500',
-          gradient: '',
-          unlocked: totalCompletions >= 25,
-          progress: Math.min(totalCompletions, 25),
-          target: 25,
-          xpReward: 150
-        },
-        {
-          id: 'dedicated',
-          title: 'Dedicated',
-          description: 'Complete 50 habits',
-          icon: Award,
-          color: 'text-purple-500',
-          gradient: '',
-          unlocked: totalCompletions >= 50,
-          progress: Math.min(totalCompletions, 50),
-          target: 50,
-          xpReward: 250
-        },
-        {
-          id: 'habit_master',
-          title: 'Habit Master',
-          description: 'Complete 100 habits',
-          icon: Crown,
-          color: 'text-yellow-500',
-          gradient: '',
-          unlocked: totalCompletions >= 100,
-          progress: Math.min(totalCompletions, 100),
-          target: 100,
-          xpReward: 500
-        },
-        {
-          id: 'champion',
-          title: 'Champion',
-          description: 'Complete 250 habits',
-          icon: Trophy,
-          color: 'text-orange-500',
-          gradient: '',
-          unlocked: totalCompletions >= 250,
-          progress: Math.min(totalCompletions, 250),
-          target: 250,
-          xpReward: 1000
-        },
-        {
-          id: 'legend',
-          title: 'Legend',
-          description: 'Complete 500 habits',
-          icon: Trophy,
-          color: 'text-red-500',
-          gradient: '',
-          unlocked: totalCompletions >= 500,
-          progress: Math.min(totalCompletions, 500),
-          target: 500,
-          xpReward: 2000
-        },
-        {
-          id: 'streak_starter',
-          title: 'Streak Starter',
-          description: '3 day streak',
-          icon: Flame,
-          color: 'text-orange-500',
-          gradient: '',
-          unlocked: currentStreak >= 3,
-          progress: Math.min(currentStreak, 3),
-          target: 3,
-          xpReward: 100
-        },
-        {
-          id: 'week_warrior',
-          title: 'Week Warrior',
-          description: '7 day streak',
-          icon: Flame,
-          color: 'text-red-500',
-          gradient: '',
-          unlocked: currentStreak >= 7,
-          progress: Math.min(currentStreak, 7),
-          target: 7,
-          xpReward: 200
-        },
-        {
-          id: 'two_week_hero',
-          title: 'Two Week Hero',
-          description: '14 day streak',
-          icon: Flame,
-          color: 'text-pink-500',
-          gradient: '',
-          unlocked: currentStreak >= 14,
-          progress: Math.min(currentStreak, 14),
-          target: 14,
-          xpReward: 400
-        },
-        {
-          id: 'month_master',
-          title: 'Month Master',
-          description: '30 day streak',
-          icon: Calendar,
-          color: 'text-purple-500',
-          gradient: '',
-          unlocked: currentStreak >= 30,
-          progress: Math.min(currentStreak, 30),
-          target: 30,
-          xpReward: 1000
-        },
-        {
-          id: 'quarter_champion',
-          title: 'Quarter Champion',
-          description: '90 day streak',
-          icon: Zap,
-          color: 'text-yellow-500',
-          gradient: '',
-          unlocked: longestStreak >= 90,
-          progress: Math.min(longestStreak, 90),
-          target: 90,
-          xpReward: 3000
-        },
-        {
-          id: 'unstoppable',
-          title: 'Unstoppable',
-          description: '100 day streak',
-          icon: Zap,
-          color: 'text-amber-500',
-          gradient: '',
-          unlocked: longestStreak >= 100,
-          progress: Math.min(longestStreak, 100),
-          target: 100,
-          xpReward: 5000
-        },
-        {
-          id: 'perfect_start',
-          title: 'Perfect Start',
-          description: '3 perfect days',
-          icon: Star,
-          color: 'text-cyan-500',
-          gradient: '',
-          unlocked: perfectDays >= 3,
-          progress: Math.min(perfectDays, 3),
-          target: 3,
-          xpReward: 200
-        },
-        {
-          id: 'perfectionist',
-          title: 'Perfectionist',
-          description: '10 perfect days',
-          icon: Star,
-          color: 'text-blue-500',
-          gradient: '',
-          unlocked: perfectDays >= 10,
-          progress: Math.min(perfectDays, 10),
-          target: 10,
-          xpReward: 500
-        },
-        {
-          id: 'flawless',
-          title: 'Flawless',
-          description: '25 perfect days',
-          icon: Star,
-          color: 'text-indigo-500',
-          gradient: '',
-          unlocked: perfectDays >= 25,
-          progress: Math.min(perfectDays, 25),
-          target: 25,
-          xpReward: 1500
-        },
-        {
-          id: 'rising_star',
-          title: 'Rising Star',
-          description: 'Reach level 5',
-          icon: TrendingUp,
-          color: 'text-green-500',
-          gradient: '',
-          unlocked: level >= 5,
-          progress: Math.min(level, 5),
-          target: 5,
-          xpReward: 300
-        },
-        {
-          id: 'overachiever',
-          title: 'Overachiever',
-          description: 'Reach level 10',
-          icon: TrendingUp,
-          color: 'text-blue-500',
-          gradient: '',
-          unlocked: level >= 10,
-          progress: Math.min(level, 10),
-          target: 10,
-          xpReward: 1000
-        },
-        {
-          id: 'elite',
-          title: 'Elite',
-          description: 'Reach level 25',
-          icon: Crown,
-          color: 'text-purple-500',
-          gradient: '',
-        unlocked: level >= 25,
-        progress: Math.min(level, 25),
-          target: 25,
-          xpReward: 2500
-        },
-        {
-          id: 'master',
-          title: 'Master',
-          description: 'Reach level 50',
-          icon: Crown,
-          color: 'text-yellow-500',
-          gradient: '',
-          unlocked: level >= 50,
-          progress: Math.min(level, 50),
-          target: 50,
-          xpReward: 5000
-        },
-        {
-          id: 'grandmaster',
-          title: 'Grandmaster',
-          description: 'Reach level 100',
-          icon: Crown,
-          color: 'text-orange-500',
-          gradient: '',
-          unlocked: level >= 100,
-          progress: Math.min(level, 100),
-          target: 100,
-          xpReward: 10000
-        },
-        {
-          id: 'titan',
-          title: 'Titan',
-          description: 'Complete 1000 habits',
-          icon: Trophy,
-          color: 'text-purple-500',
-          gradient: '',
-          unlocked: totalCompletions >= 1000,
-          progress: Math.min(totalCompletions, 1000),
-          target: 1000,
-          xpReward: 5000
-        },
-        {
-          id: 'immortal',
-          title: 'Immortal',
-          description: 'Complete 2500 habits',
-          icon: Trophy,
-          color: 'text-pink-500',
-          gradient: '',
-          unlocked: totalCompletions >= 2500,
-          progress: Math.min(totalCompletions, 2500),
-          target: 2500,
-          xpReward: 15000
-        },
-        {
-          id: 'half_year_streak',
-          title: 'Half Year Hero',
-          description: '180 day streak',
-          icon: Flame,
-          color: 'text-orange-500',
-          gradient: '',
-          unlocked: longestStreak >= 180,
-          progress: Math.min(longestStreak, 180),
-          target: 180,
-          xpReward: 8000
-        },
-        {
-          id: 'year_warrior',
-          title: 'Year Warrior',
-          description: '365 day streak',
-          icon: Flame,
-          color: 'text-red-500',
-          gradient: '',
-          unlocked: longestStreak >= 365,
-          progress: Math.min(longestStreak, 365),
-          target: 365,
-          xpReward: 20000
-        },
-        {
-          id: 'perfect_month',
-          title: 'Perfect Month',
-          description: '30 perfect days',
-          icon: Star,
-          color: 'text-purple-500',
-          gradient: '',
-          unlocked: perfectDays >= 30,
-          progress: Math.min(perfectDays, 30),
-          target: 30,
-          xpReward: 3000
-        },
-        {
-          id: 'perfect_quarter',
-          title: 'Perfect Quarter',
-          description: '90 perfect days',
-          icon: Star,
-          color: 'text-pink-500',
-          gradient: '',
-          unlocked: perfectDays >= 90,
-          progress: Math.min(perfectDays, 90),
-          target: 90,
-          xpReward: 10000
-        },
-        {
-          id: 'perfect_year',
-          title: 'Perfect Year',
-          description: '365 perfect days',
-          icon: Star,
-          color: 'text-yellow-500',
-          gradient: '',
-          unlocked: perfectDays >= 365,
-          progress: Math.min(perfectDays, 365),
-          target: 365,
-          xpReward: 50000
-        },
-        {
-          id: 'centurion',
-          title: 'Centurion',
-          description: '100 habits in a single day',
-          icon: Zap,
-          color: 'text-cyan-500',
-          gradient: '',
-          unlocked: false, // This would need special tracking
-          progress: 0,
-          target: 100,
-          xpReward: 5000
-        },
-        {
-          id: 'marathon_runner',
-          title: 'Marathon Runner',
-          description: '500 day longest streak',
-          icon: Flame,
-          color: 'text-purple-500',
-          gradient: '',
-          unlocked: longestStreak >= 500,
-          progress: Math.min(longestStreak, 500),
-          target: 500,
-          xpReward: 30000
-        },
-        {
-          id: 'ultimate_legend',
-          title: 'Ultimate Legend',
-          description: 'Complete 5000 habits',
-          icon: Trophy,
-          color: 'text-yellow-500',
-          gradient: '',
-          unlocked: totalCompletions >= 5000,
-          progress: Math.min(totalCompletions, 5000),
-          target: 5000,
-          xpReward: 50000
-        },
-        {
-          id: 'god_mode',
-          title: 'God Mode',
-          description: 'Complete 10000 habits',
-          icon: Crown,
-          color: 'text-red-500',
-          gradient: '',
-          unlocked: totalCompletions >= 10000,
-          progress: Math.min(totalCompletions, 10000),
-          target: 10000,
-          xpReward: 100000
+      // Map achievement definitions to UI with progress
+      const iconMap: Record<string, any> = {
+        first_step: CheckCircle2, early_bird: Target, getting_started: Target,
+        consistent: Award, dedicated: Award, habit_master: Crown,
+        champion: Trophy, legend: Trophy, streak_starter: Flame,
+        week_warrior: Flame, two_week_hero: Flame, month_master: Calendar,
+        quarter_champion: Zap, perfect_start: Star, perfectionist: Star,
+        flawless: Star, perfect_month: Star, perfect_master: Star
+      }
+      
+      const colorMap: Record<string, string> = {
+        first_step: 'text-green-500', early_bird: 'text-blue-500', getting_started: 'text-cyan-500',
+        consistent: 'text-indigo-500', dedicated: 'text-purple-500', habit_master: 'text-yellow-500',
+        champion: 'text-orange-500', legend: 'text-red-500', streak_starter: 'text-orange-500',
+        week_warrior: 'text-red-500', two_week_hero: 'text-pink-500', month_master: 'text-purple-500',
+        quarter_champion: 'text-yellow-500', perfect_start: 'text-cyan-500', perfectionist: 'text-blue-500',
+        flawless: 'text-indigo-500', perfect_month: 'text-purple-500', perfect_master: 'text-yellow-500'
+      }
+
+      const achievementsList: Achievement[] = ACHIEVEMENTS.map(a => {
+        let progress = 0
+        let unlocked = false
+        
+        if (a.category === 'completion') {
+          progress = Math.min(totalCompletions, a.target)
+          unlocked = totalCompletions >= a.target
+        } else if (a.category === 'streak') {
+          const maxStreak = Math.max(currentStreak, longestStreak)
+          progress = Math.min(maxStreak, a.target)
+          unlocked = maxStreak >= a.target
+        } else if (a.category === 'perfect') {
+          progress = Math.min(perfectDays, a.target)
+          unlocked = perfectDays >= a.target
         }
-      ]
+
+        return {
+          id: a.id,
+          title: a.title,
+          description: a.description,
+          icon: iconMap[a.id] || Trophy,
+          color: colorMap[a.id] || 'text-gray-500',
+          unlocked,
+          claimed: claimedIds.includes(a.id),
+          progress,
+          target: a.target,
+          coinReward: a.coinReward,
+          xpReward: a.xpReward,
+          category: a.category
+        }
+      })
 
       setAchievements(achievementsList)
+
+      // Weekly Challenges
+      const now = new Date()
+      const weekStart = new Date(now)
+      weekStart.setDate(now.getDate() - now.getDay())
+      const weekEnd = new Date(weekStart)
+      weekEnd.setDate(weekStart.getDate() + 6)
+      
+      const daysUntilWeekEnd = Math.ceil((weekEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+      const endsIn = `${daysUntilWeekEnd} day${daysUntilWeekEnd !== 1 ? 's' : ''}`
+
+      const weekLogs = logs.filter(log => {
+        const logDate = new Date(log.date)
+        return logDate >= weekStart && logDate <= weekEnd
+      })
+
+      const weekCompletions = weekLogs.length
+      const weekPerfectDays = Array.from(new Set(weekLogs.map(l => l.date))).filter(date => {
+        const dayLogs = weekLogs.filter(l => l.date === date)
+        return dayLogs.length >= habitCount
+      }).length
+
+      setWeeklyChallenges([
+        { id: 'week_10', title: 'Complete 10 Habits', description: 'Complete 10 habits this week', progress: Math.min(weekCompletions, 10), target: 10, coinReward: 25, icon: Target, color: 'text-blue-500', endsIn },
+        { id: 'week_25', title: 'Complete 25 Habits', description: 'Complete 25 habits this week', progress: Math.min(weekCompletions, 25), target: 25, coinReward: 50, icon: Trophy, color: 'text-purple-500', endsIn },
+        { id: 'week_perfect_3', title: '3 Perfect Days', description: 'Have 3 perfect days this week', progress: Math.min(weekPerfectDays, 3), target: 3, coinReward: 40, icon: Star, color: 'text-yellow-500', endsIn },
+        { id: 'week_streak_7', title: '7 Day Streak', description: 'Maintain a 7 day streak', progress: Math.min(currentStreak, 7), target: 7, coinReward: 60, icon: Flame, color: 'text-orange-500', endsIn },
+      ])
+
+      setLoading(false)
     } catch (error) {
-      console.error('Error in fetchGamificationData:', error)
+      console.error('Error fetching data:', error)
+      setLoading(false)
     }
   }
 
+  const handleClaimAchievement = async (achievementId: string) => {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    setClaiming(achievementId)
+    
+    const result = await claimAchievement(user.id, achievementId)
+    
+    if (result.success) {
+      // Update local state
+      setAchievements(prev => prev.map(a => 
+        a.id === achievementId ? { ...a, claimed: true } : a
+      ))
+      setStats(prev => ({
+        ...prev,
+        totalCoins: prev.totalCoins + (result.coinsAwarded || 0),
+        xp: prev.xp + (result.xpAwarded || 0)
+      }))
+    }
+    
+    setClaiming(null)
+  }
+
   const unlockedCount = achievements.filter(a => a.unlocked).length
-  const progressPercentage = (stats.xp / (stats.level * 100)) * 100
-  const totalXpEarned = achievements.filter(a => a.unlocked).reduce((sum, a) => sum + a.xpReward, 0)
+  const claimedCount = achievements.filter(a => a.claimed).length
+  const unclaimedCount = achievements.filter(a => a.unlocked && !a.claimed).length
+  const totalCoinsEarned = achievements.filter(a => a.claimed).reduce((sum, a) => sum + a.coinReward, 0)
+
+  const categories = [
+    { id: 'completion', label: 'Completion', icon: Target, color: 'text-blue-500' },
+    { id: 'streak', label: 'Streaks', icon: Flame, color: 'text-orange-500' },
+    { id: 'perfect', label: 'Perfect Days', icon: Star, color: 'text-yellow-500' },
+  ]
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold mb-2">Achievements & Rewards</h1>
-          <p className="text-foreground-muted">Track your progress and unlock rewards</p>
-        </div>
-        <Link 
-          href="/habits"
-          className="px-4 py-2 bg-accent-primary text-white rounded-lg hover:opacity-90 transition text-sm"
-        >
-          Back to Habits
-        </Link>
+      <div>
+        <h1 className="text-2xl font-bold mb-2">Achievements & Rewards</h1>
+        <p className="text-foreground-muted">Complete challenges and earn coins</p>
       </div>
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="bg-surface p-6 rounded-2xl border border-border-subtle animate-pulse">
-              <div className="h-32 bg-background rounded-lg" />
-            </div>
+            <div key={i} className="bg-surface p-6 rounded-2xl border border-border-subtle animate-pulse h-32" />
           ))}
         </div>
       ) : (
         <>
-          {/* Level & Stats Section */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Level Card */}
-            <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 p-6 rounded-2xl border border-purple-500/30">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-3 bg-purple-500/20 rounded-xl">
-                  <Crown size={32} className="text-purple-400" />
-                </div>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-gradient-to-br from-yellow-500/10 to-orange-500/10 p-5 rounded-xl border border-yellow-500/30">
+              <div className="flex items-center gap-3">
+                <Coins size={28} className="text-yellow-400" />
                 <div>
-                  <div className="text-3xl font-bold">Level {stats.level}</div>
-                  <div className="text-sm text-foreground-muted">{stats.xp} XP</div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-foreground-muted">Next Level</span>
-                  <span className="font-semibold text-purple-400">{stats.xpToNextLevel} XP</span>
-                </div>
-                <div className="relative h-3 bg-background rounded-full overflow-hidden">
-                  <div 
-                    className="absolute inset-y-0 left-0 bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500"
-                    style={{ width: `${progressPercentage}%` }}
-                  />
+                  <div className="text-2xl font-bold">{stats.totalCoins}</div>
+                  <div className="text-xs text-foreground-muted">Total Coins</div>
                 </div>
               </div>
             </div>
 
-            {/* Achievements Progress */}
-            <div className="bg-gradient-to-br from-yellow-500/10 to-orange-500/10 p-6 rounded-2xl border border-yellow-500/30">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-3 bg-yellow-500/20 rounded-xl">
-                  <Trophy size={32} className="text-yellow-400" />
-                </div>
+            <div className="bg-surface p-5 rounded-xl border border-border-subtle">
+              <div className="flex items-center gap-3">
+                <Trophy size={28} className="text-accent-primary" />
                 <div>
-                  <div className="text-3xl font-bold">{unlockedCount}/{achievements.length}</div>
-                  <div className="text-sm text-foreground-muted">Unlocked</div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-foreground-muted">Completion</span>
-                  <span className="font-semibold text-yellow-400">{Math.round((unlockedCount / achievements.length) * 100)}%</span>
-                </div>
-                <div className="relative h-3 bg-background rounded-full overflow-hidden">
-                  <div 
-                    className="absolute inset-y-0 left-0 bg-gradient-to-r from-yellow-500 to-orange-500 transition-all duration-500"
-                    style={{ width: `${(unlockedCount / achievements.length) * 100}%` }}
-                  />
+                  <div className="text-2xl font-bold">{claimedCount}/{achievements.length}</div>
+                  <div className="text-xs text-foreground-muted">
+                    Claimed {unclaimedCount > 0 && <span className="text-yellow-500">({unclaimedCount} to claim!)</span>}
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Total XP Earned */}
-            <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 p-6 rounded-2xl border border-blue-500/30">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-3 bg-blue-500/20 rounded-xl">
-                  <Zap size={32} className="text-blue-400" />
-                </div>
+            <div className="bg-surface p-5 rounded-xl border border-border-subtle">
+              <div className="flex items-center gap-3">
+                <Flame size={28} className="text-orange-500" />
                 <div>
-                  <div className="text-3xl font-bold">{totalXpEarned}</div>
-                  <div className="text-sm text-foreground-muted">XP from Achievements</div>
+                  <div className="text-2xl font-bold">{stats.currentStreak}</div>
+                  <div className="text-xs text-foreground-muted">Current Streak</div>
                 </div>
               </div>
-              <div className="text-sm text-foreground-muted">
-                Keep unlocking achievements to earn more XP and level up faster!
+            </div>
+
+            <div className="bg-surface p-5 rounded-xl border border-border-subtle">
+              <div className="flex items-center gap-3">
+                <Star size={28} className="text-yellow-500" />
+                <div>
+                  <div className="text-2xl font-bold">{stats.perfectDays}</div>
+                  <div className="text-xs text-foreground-muted">Perfect Days</div>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-surface p-4 rounded-xl border border-border-subtle text-center">
-              <div className="text-2xl font-bold text-accent-success">{stats.totalCompletions}</div>
-              <div className="text-xs text-foreground-muted">Total Completions</div>
-            </div>
-            <div className="bg-surface p-4 rounded-xl border border-border-subtle text-center">
-              <div className="text-2xl font-bold text-orange-400">{stats.currentStreak}</div>
-              <div className="text-xs text-foreground-muted">Current Streak</div>
-            </div>
-            <div className="bg-surface p-4 rounded-xl border border-border-subtle text-center">
-              <div className="text-2xl font-bold text-yellow-400">{stats.longestStreak}</div>
-              <div className="text-xs text-foreground-muted">Longest Streak</div>
-            </div>
-            <div className="bg-surface p-4 rounded-xl border border-border-subtle text-center">
-              <div className="text-2xl font-bold text-cyan-400">{stats.perfectDays}</div>
-              <div className="text-xs text-foreground-muted">Perfect Days</div>
-            </div>
-          </div>
-
-          {/* Achievements Grid */}
+          {/* Weekly Challenges */}
           <div>
-            <h2 className="text-xl font-bold mb-4">All Achievements</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {achievements.map(achievement => {
-                const Icon = achievement.icon
+            <div className="flex items-center gap-2 mb-4">
+              <Calendar size={20} className="text-accent-primary" />
+              <h2 className="text-xl font-bold">Weekly Challenges</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {weeklyChallenges.map(challenge => {
+                const Icon = challenge.icon
+                const isCompleted = challenge.progress >= challenge.target
                 return (
                   <div
-                    key={achievement.id}
-                    className={`relative p-6 rounded-xl border-2 transition-all ${
-                      achievement.unlocked
-                        ? 'bg-surface border-accent-success shadow-md'
+                    key={challenge.id}
+                    className={`p-4 rounded-xl border-2 transition-all ${
+                      isCompleted
+                        ? 'bg-accent-success/10 border-accent-success/50'
                         : 'bg-surface border-border-subtle'
                     }`}
                   >
-                    {/* Lock Overlay for Locked Achievements */}
-                    {!achievement.unlocked && (
-                      <div className="absolute top-4 right-4">
-                        <Lock size={20} className="text-foreground-muted" />
-                      </div>
-                    )}
-
-                    <div className="flex items-start gap-4 mb-4">
-                      <div className={`p-3 rounded-lg ${achievement.unlocked ? 'bg-accent-success/10' : 'bg-background'}`}>
-                        <Icon size={32} className={achievement.unlocked ? achievement.color : 'text-foreground-muted'} strokeWidth={2} />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-bold text-base mb-1">{achievement.title}</h3>
-                        <p className="text-sm text-foreground-muted">{achievement.description}</p>
+                    <div className="flex items-center justify-between mb-3">
+                      <Icon size={24} className={challenge.color} />
+                      <div className="flex items-center gap-1 text-xs font-bold text-yellow-500">
+                        <Coins size={14} />
+                        {challenge.coinReward}
                       </div>
                     </div>
-
-                    {/* Progress or Unlocked Status */}
-                    {achievement.unlocked ? (
-                      <div className="flex items-center justify-between">
-                        <div className={`flex items-center gap-2 text-sm font-semibold ${achievement.color}`}>
-                          <CheckCircle2 size={16} />
-                          Unlocked!
-                        </div>
-                        <div className="text-sm font-semibold text-yellow-400">
-                          +{achievement.xpReward} XP
-                        </div>
+                    <h3 className="font-bold text-sm mb-1">{challenge.title}</h3>
+                    <p className="text-xs text-foreground-muted mb-3">{challenge.description}</p>
+                    
+                    {isCompleted ? (
+                      <div className="flex items-center gap-2 text-xs font-semibold text-accent-success">
+                        <CheckCircle2 size={14} />
+                        Completed!
                       </div>
                     ) : (
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-foreground-muted">Progress</span>
-                          <span className="font-semibold">{achievement.progress} / {achievement.target}</span>
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-foreground-muted">{challenge.progress}/{challenge.target}</span>
+                          <span className="text-foreground-muted">Ends in {challenge.endsIn}</span>
                         </div>
-                        <div className="h-2 bg-background rounded-full overflow-hidden">
+                        <div className="h-1.5 bg-background rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-accent-primary transition-all duration-300"
-                            style={{ width: `${(achievement.progress / achievement.target) * 100}%` }}
+                            className="h-full bg-accent-primary transition-all"
+                            style={{ width: `${(challenge.progress / challenge.target) * 100}%` }}
                           />
-                        </div>
-                        <div className="text-xs text-foreground-muted text-right">
-                          Reward: +{achievement.xpReward} XP
                         </div>
                       </div>
                     )}
@@ -740,27 +383,96 @@ export default function AchievementsPage() {
             </div>
           </div>
 
-          {/* How to Earn XP */}
-          <div className="bg-gradient-to-br from-accent-primary/10 to-accent-primary/5 p-6 rounded-2xl border border-accent-primary/20">
-            <div className="flex items-center gap-3 mb-4">
-              <Award size={24} className="text-accent-primary" />
-              <h3 className="text-lg font-semibold">How to Earn XP</h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-surface/50 p-4 rounded-xl">
-                <div className="text-2xl font-bold text-accent-success mb-1">+10 XP</div>
-                <div className="text-sm text-foreground-muted">Per habit completed</div>
+          {/* Achievements by Category */}
+          {categories.map(category => {
+            const categoryAchievements = achievements.filter(a => a.category === category.id)
+            const CategoryIcon = category.icon
+            
+            return (
+              <div key={category.id}>
+                <div className="flex items-center gap-2 mb-4">
+                  <CategoryIcon size={20} className={category.color} />
+                  <h2 className="text-xl font-bold">{category.label}</h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {categoryAchievements.map(achievement => {
+                    const Icon = achievement.icon
+                    return (
+                      <div
+                        key={achievement.id}
+                        className={`relative p-5 rounded-xl border-2 transition-all ${
+                          achievement.unlocked
+                            ? 'bg-surface border-accent-success/50'
+                            : 'bg-surface border-border-subtle'
+                        }`}
+                      >
+                        {!achievement.unlocked && (
+                          <div className="absolute top-4 right-4">
+                            <Lock size={18} className="text-foreground-muted" />
+                          </div>
+                        )}
+
+                        <div className="flex items-start gap-3 mb-3">
+                          <div className={`p-2 rounded-lg ${achievement.unlocked ? 'bg-accent-success/10' : 'bg-background'}`}>
+                            <Icon size={24} className={achievement.unlocked ? achievement.color : 'text-foreground-muted'} />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-bold text-sm mb-1">{achievement.title}</h3>
+                            <p className="text-xs text-foreground-muted">{achievement.description}</p>
+                          </div>
+                        </div>
+
+                        {achievement.claimed ? (
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-xs font-semibold text-accent-success">
+                              <CheckCircle2 size={14} />
+                              Claimed
+                            </div>
+                            <div className="flex items-center gap-2 text-xs font-bold text-yellow-500">
+                              <span className="flex items-center gap-1"><Coins size={14} />+{achievement.coinReward}</span>
+                              <span className="text-purple-400">+{achievement.xpReward} XP</span>
+                            </div>
+                          </div>
+                        ) : achievement.unlocked ? (
+                          <button
+                            onClick={() => handleClaimAchievement(achievement.id)}
+                            disabled={claiming === achievement.id}
+                            className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-sm font-bold rounded-lg hover:from-yellow-400 hover:to-orange-400 transition-all disabled:opacity-50"
+                          >
+                            {claiming === achievement.id ? (
+                              'Claiming...'
+                            ) : (
+                              <>
+                                <Gift size={16} />
+                                Claim +{achievement.coinReward} coins & +{achievement.xpReward} XP
+                              </>
+                            )}
+                          </button>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-xs">
+                              <span className="text-foreground-muted">Progress</span>
+                              <span className="font-semibold">{achievement.progress}/{achievement.target}</span>
+                            </div>
+                            <div className="h-1.5 bg-background rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-accent-primary transition-all"
+                                style={{ width: `${(achievement.progress / achievement.target) * 100}%` }}
+                              />
+                            </div>
+                            <div className="flex items-center justify-end gap-2 text-xs text-foreground-muted">
+                              <span className="flex items-center gap-1"><Coins size={12} />{achievement.coinReward}</span>
+                              <span>+{achievement.xpReward} XP</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
-              <div className="bg-surface/50 p-4 rounded-xl">
-                <div className="text-2xl font-bold text-orange-400 mb-1">+50 XP</div>
-                <div className="text-sm text-foreground-muted">Per day in streak</div>
-              </div>
-              <div className="bg-surface/50 p-4 rounded-xl">
-                <div className="text-2xl font-bold text-yellow-400 mb-1">+100 XP</div>
-                <div className="text-sm text-foreground-muted">Per perfect day</div>
-              </div>
-            </div>
-          </div>
+            )
+          })}
         </>
       )}
     </div>

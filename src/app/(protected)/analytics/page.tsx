@@ -657,92 +657,97 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-          {/* Category Performance - Radial Chart */}
-          <div className="bg-surface rounded-2xl p-6 border border-border-subtle">
-            <h2 className="text-xl font-bold mb-6">Category Performance</h2>
-            {categoryStats.length > 0 ? (
-              <div className="h-96 [&_.recharts-wrapper]:!outline-none [&_.recharts-surface]:!outline-none">
+          {/* Category Performance & Completion Distribution - Side by Side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Category Performance - Radial Chart */}
+            <div className="bg-surface rounded-2xl p-6 border border-border-subtle">
+              <h2 className="text-xl font-bold mb-6">Category Performance</h2>
+              {categoryStats.length > 0 ? (
+                <div className="h-80 [&_.recharts-wrapper]:!outline-none [&_.recharts-surface]:!outline-none">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadialBarChart 
+                      cx="50%" 
+                      cy="50%" 
+                      innerRadius="20%" 
+                      outerRadius="90%" 
+                      data={categoryStats.map((cat, idx) => ({
+                        ...cat,
+                        fill: ['#6366f1', '#22c55e', '#eab308', '#f97316', '#ec4899', '#8b5cf6'][idx % 6]
+                      }))}
+                      startAngle={90}
+                      endAngle={-270}
+                    >
+                      <RadialBar
+                        background
+                        dataKey="percentage"
+                        cornerRadius={10}
+                        label={{ position: 'insideStart', fill: '#fff', fontSize: 12 }}
+                      />
+                      <Legend 
+                        iconSize={10}
+                        layout="vertical"
+                        verticalAlign="middle"
+                        align="right"
+                        formatter={(value, entry: any) => (
+                          <span className="text-xs">
+                            {entry.payload.category}: {entry.payload.percentage}%
+                          </span>
+                        )}
+                      />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#111111', border: '1px solid #222222', borderRadius: '8px' }}
+                        labelStyle={{ color: '#ffffff' }}
+                        formatter={(value: any, name: any, props: any) => [
+                          `${value}% (${props.payload.completed}/${props.payload.total})`,
+                          props.payload.category
+                        ]}
+                      />
+                    </RadialBarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-80 flex items-center justify-center text-foreground-muted">
+                  No category data available
+                </div>
+              )}
+            </div>
+
+            {/* Pie Chart - Completion Distribution */}
+            <div className="bg-surface rounded-2xl p-6 border border-border-subtle">
+              <h2 className="text-xl font-bold mb-6">Completion Distribution</h2>
+              <div className="h-80 [&_.recharts-wrapper]:!outline-none [&_.recharts-surface]:!outline-none">
                 <ResponsiveContainer width="100%" height="100%">
-                  <RadialBarChart 
-                    cx="50%" 
-                    cy="50%" 
-                    innerRadius="20%" 
-                    outerRadius="90%" 
-                    data={categoryStats.map((cat, idx) => ({
-                      ...cat,
-                      fill: ['#6366f1', '#22c55e', '#eab308', '#f97316', '#ec4899', '#8b5cf6'][idx % 6]
-                    }))}
-                    startAngle={90}
-                    endAngle={-270}
-                  >
-                    <RadialBar
-                      background
-                      dataKey="percentage"
-                      cornerRadius={10}
-                      label={{ position: 'insideStart', fill: '#fff', fontSize: 14 }}
-                    />
-                    <Legend 
-                      iconSize={12}
-                      layout="vertical"
-                      verticalAlign="middle"
-                      align="right"
-                      formatter={(value, entry: any) => (
-                        <span className="text-sm">
-                          {entry.payload.category}: {entry.payload.percentage}% ({entry.payload.completed}/{entry.payload.total})
-                        </span>
-                      )}
-                    />
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { name: 'Weekly', value: analytics.weekly.percentage, fill: '#22c55e' },
+                        { name: 'Monthly', value: analytics.monthly.percentage, fill: '#6366f1' },
+                        { name: 'Yearly', value: analytics.yearly.percentage, fill: '#eab308' }
+                      ]}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={5}
+                      dataKey="value"
+                      label={({ name, value }) => `${name}: ${value}%`}
+                    >
+                      <Cell fill="#22c55e" />
+                      <Cell fill="#6366f1" />
+                      <Cell fill="#eab308" />
+                    </Pie>
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#111111', border: '1px solid #222222', borderRadius: '8px' }}
                       labelStyle={{ color: '#ffffff' }}
-                      formatter={(value: any, name: any, props: any) => [
-                        `${value}% (${props.payload.completed}/${props.payload.total})`,
-                        props.payload.category
-                      ]}
                     />
-                  </RadialBarChart>
+                    <Legend />
+                  </PieChart>
                 </ResponsiveContainer>
               </div>
-            ) : (
-              <div className="h-96 flex items-center justify-center text-foreground-muted">
-                No category data available
-              </div>
-            )}
-          </div>
-
-          {/* Pie Chart - Completion Distribution */}
-          <div className="bg-surface rounded-2xl p-6 border border-border-subtle">
-            <h2 className="text-xl font-bold mb-6">Completion Distribution</h2>
-            <div className="h-72 [&_.recharts-wrapper]:!outline-none [&_.recharts-surface]:!outline-none">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={[
-                      { name: 'Weekly', value: analytics.weekly.percentage, fill: '#22c55e' },
-                      { name: 'Monthly', value: analytics.monthly.percentage, fill: '#6366f1' },
-                      { name: 'Yearly', value: analytics.yearly.percentage, fill: '#eab308' }
-                    ]}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={5}
-                    dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}%`}
-                  >
-                    <Cell fill="#22c55e" />
-                    <Cell fill="#6366f1" />
-                    <Cell fill="#eab308" />
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#111111', border: '1px solid #222222', borderRadius: '8px' }}
-                    labelStyle={{ color: '#ffffff' }}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
             </div>
           </div>
+
+
 
           {/* Multi-Line Comparison Chart */}
           <div className="bg-surface rounded-2xl p-6 border border-border-subtle">
