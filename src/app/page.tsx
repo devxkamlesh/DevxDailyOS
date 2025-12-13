@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Target, Rocket, TrendingUp, CheckCircle2, Shield,
   Calendar, Trophy, Coins, Clock, Users, Flame,
@@ -68,7 +68,7 @@ const content = {
     finalCtaCta: 'Start साधना Free',
     footerTagline: 'Your daily practice for building habits, shipping projects, and leveling up.',
     footerMadeIn: 'Made in India 🇮🇳',
-    footerCopyright: '© 2024 Sadhana. Built with ❤️ for साधक',
+    footerCopyright: '© 2025 Sadhana. Built with ❤️ for साधक',
   },
   en: {
     badge: 'Your Personal Operating System',
@@ -127,7 +127,7 @@ const content = {
     finalCtaCta: 'Start Sadhana Free',
     footerTagline: 'Your daily practice for building habits, shipping projects, and leveling up.',
     footerMadeIn: 'Made in India 🇮🇳',
-    footerCopyright: '© 2024 Sadhana. Built with ❤️ for practitioners',
+    footerCopyright: '© 2025 Sadhana. Built with ❤️ for practitioners',
   }
 }
 
@@ -146,6 +146,21 @@ const gamificationIcons = [Coins, Flame, Trophy, Users]
 export default function Home() {
   const [lang, setLang] = useState<'hi' | 'en'>('hi')
   const t = content[lang]
+
+  // Load language preference from localStorage on mount
+  useEffect(() => {
+    const savedLang = localStorage.getItem('sadhana-lang') as 'hi' | 'en' | null
+    if (savedLang && (savedLang === 'hi' || savedLang === 'en')) {
+      setLang(savedLang)
+    }
+  }, [])
+
+  // Save language preference to localStorage when changed
+  const handleLanguageChange = () => {
+    const newLang = lang === 'hi' ? 'en' : 'hi'
+    setLang(newLang)
+    localStorage.setItem('sadhana-lang', newLang)
+  }
 
   return (
     <main className="min-h-screen bg-background overflow-hidden">
@@ -169,7 +184,7 @@ export default function Home() {
           <div className="flex items-center gap-3">
             {/* Language Toggle */}
             <button
-              onClick={() => setLang(lang === 'hi' ? 'en' : 'hi')}
+              onClick={handleLanguageChange}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-surface border border-border-subtle rounded-lg text-sm hover:bg-background transition"
             >
               <Globe size={14} />

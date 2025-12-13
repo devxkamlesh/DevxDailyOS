@@ -176,13 +176,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [theme, mounted])
 
-  // Show minimal loading state to prevent flash
+  // Don't show loading state - let the page loading.tsx handle it
+  // This prevents duplicate loading screens
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-foreground-muted">Loading...</div>
-      </div>
-    )
+    return null
   }
 
   return (

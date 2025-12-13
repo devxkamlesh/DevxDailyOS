@@ -3,6 +3,8 @@
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
 
+const MINIMUM_DISPLAY_TIME = 3000 // 1 second minimum display
+
 const slokas = [
   { sanskrit: '॥ योगः कर्मसु कौशलम् ॥', meaning: 'Excellence in action is Yoga' },
   { sanskrit: '॥ कर्मण्येवाधिकारस्ते ॥', meaning: 'You have the right to action alone' },
@@ -31,6 +33,7 @@ const animationStyles = [
 export default function LoadingScreen() {
   const [style, setStyle] = useState<string>('pulse')
   const [sloka, setSloka] = useState(slokas[0])
+  const [isVisible, setIsVisible] = useState(true)
 
   useEffect(() => {
     // Random style and sloka on mount
@@ -38,7 +41,16 @@ export default function LoadingScreen() {
     const randomSloka = slokas[Math.floor(Math.random() * slokas.length)]
     setStyle(randomStyle)
     setSloka(randomSloka)
+
+    // Ensure minimum display time of 1 second
+    const timer = setTimeout(() => {
+      setIsVisible(false)
+    }, MINIMUM_DISPLAY_TIME)
+
+    return () => clearTimeout(timer)
   }, [])
+
+  if (!isVisible) return null
 
   return (
     <div className="fixed inset-0 z-[100] bg-background flex flex-col items-center justify-center">

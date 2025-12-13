@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { Flame, ArrowLeft } from 'lucide-react'
+import Image from 'next/image'
+import { ArrowLeft } from 'lucide-react'
 
 export default function RefundPage() {
   return (
@@ -7,9 +8,7 @@ export default function RefundPage() {
       <nav className="border-b border-border-subtle">
         <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-accent-primary via-purple-500 to-orange-500 rounded-lg flex items-center justify-center">
-              <Flame size={18} className="text-white" />
-            </div>
+            <Image src="/Logo/logo.svg" alt="Sadhana" width={32} height={32} className="rounded-lg" />
             <div className="flex flex-col">
               <span className="font-bold leading-tight">Sadhana</span>
               <span className="text-[10px] text-foreground-muted leading-tight">साधना</span>
@@ -24,7 +23,7 @@ export default function RefundPage() {
 
       <div className="max-w-4xl mx-auto px-6 py-16">
         <h1 className="text-4xl font-bold mb-2">Refund Policy</h1>
-        <p className="text-foreground-muted mb-8">Last updated: December 13, 2024</p>
+        <p className="text-foreground-muted mb-8">Last updated: December 14, 2025</p>
 
         <div className="space-y-8 text-foreground-muted">
           <section>
