@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useToast } from '@/components/ui/Toast'
 import { Ticket, Plus, Edit2, Trash2, X, Copy, Check, Calendar, Users } from 'lucide-react'
 
 interface Coupon {
@@ -19,6 +20,7 @@ interface Coupon {
 }
 
 export default function AdminCouponsPage() {
+  const { showToast } = useToast()
   const [coupons, setCoupons] = useState<Coupon[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -84,7 +86,7 @@ export default function AdminCouponsPage() {
       fetchCoupons()
     } catch (error: any) {
       console.error('Error saving coupon:', error)
-      alert(`Error: ${error.message || 'Failed to save coupon. Check if table exists and RLS policies allow admin operations.'}`)
+      showToast(`Error: ${error.message || 'Failed to save coupon'}`, 'error')
     }
   }
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useToast } from '@/components/ui/Toast'
 import { Coins, Zap, Gift, Search, TrendingUp, Award } from 'lucide-react'
 
 interface RewardStats {
@@ -13,6 +14,7 @@ interface RewardStats {
 }
 
 export default function AdminRewardsPage() {
+  const { showToast } = useToast()
   const [stats, setStats] = useState<RewardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [giftForm, setGiftForm] = useState({ userId: '', coins: 0, xp: 0, reason: '' })
@@ -57,7 +59,7 @@ export default function AdminRewardsPage() {
 
   const handleGift = async () => {
     if (!giftForm.userId || (giftForm.coins === 0 && giftForm.xp === 0)) {
-      alert('Please enter user ID and at least coins or XP')
+      showToast('Please enter user ID and at least coins or XP', 'warning')
       return
     }
 
@@ -75,11 +77,11 @@ export default function AdminRewardsPage() {
         xp: (current?.xp || 0) + giftForm.xp
       }, { onConflict: 'user_id' })
 
-      alert(`Gifted ${giftForm.coins} coins and ${giftForm.xp} XP!`)
+      showToast(`Gifted ${giftForm.coins} coins and ${giftForm.xp} XP!`, 'success')
       setGiftForm({ userId: '', coins: 0, xp: 0, reason: '' })
       fetchStats()
     } catch (error) {
-      alert('Error gifting rewards')
+      showToast('Error gifting rewards', 'error')
     } finally {
       setGifting(false)
     }

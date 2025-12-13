@@ -7,6 +7,7 @@ import { Habit } from '@/types/database'
 import { Plus, X, Sunrise, Briefcase, Moon, Heart, Target, Edit2, Trash2, Eye, EyeOff, TrendingUp, Calendar, CheckCircle2, BarChart3, Award, Flame, Minus, Zap, Clock, BookOpen, Weight, Dumbbell, Droplets, FileText, Timer, AlertCircle } from 'lucide-react'
 import { LucideIcon } from 'lucide-react'
 import { useSystemSettings } from '@/lib/useSystemSettings'
+import { useToast } from '@/components/ui/Toast'
 
 const categories = ['morning', 'work', 'night', 'health', 'focus'] as const
 const categoryIcons: Record<string, LucideIcon> = {
@@ -32,6 +33,7 @@ interface Analytics {
 }
 
 export default function HabitsPage() {
+  const { showToast } = useToast()
   const [habits, setHabits] = useState<HabitWithLog[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -202,7 +204,7 @@ export default function HabitsPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         console.error('No user found')
-        alert('Please log in again')
+        showToast('Please log in again', 'error')
         return
       }
 
@@ -210,7 +212,7 @@ export default function HabitsPage() {
       if (!editingHabit) {
         const activeHabitsCount = habits.filter(h => h.is_active).length
         if (activeHabitsCount >= 30) {
-          alert('You have reached the maximum limit of 30 active habits. Please archive some habits before creating new ones.')
+          showToast('You have reached the maximum limit of 30 active habits. Please archive some habits before creating new ones.', 'warning')
           setSaving(false)
           return
         }
@@ -235,7 +237,7 @@ export default function HabitsPage() {
         
         if (profileError) {
           console.error('Profile creation error:', profileError)
-          alert('Error creating profile. Please contact support.')
+          showToast('Error creating profile. Please contact support.', 'error')
           return
         }
       }
@@ -255,7 +257,7 @@ export default function HabitsPage() {
         const { error } = await supabase.from('habits').update(payload).eq('id', editingHabit.id)
         if (error) {
           console.error('Update error:', error)
-          alert('Error updating habit: ' + error.message)
+          showToast('Error updating habit: ' + error.message, 'error')
           return
         }
       } else {
@@ -273,7 +275,7 @@ export default function HabitsPage() {
         })
         if (error) {
           console.error('Insert error:', error)
-          alert('Error creating habit: ' + error.message)
+          showToast('Error creating habit: ' + error.message, 'error')
           return
         }
       }
@@ -282,7 +284,7 @@ export default function HabitsPage() {
       fetchHabits()
     } catch (error: any) {
       console.error('Error saving habit:', error)
-      alert('Error: ' + (error.message || 'Unknown error'))
+      showToast('Error: ' + (error.message || 'Unknown error'), 'error')
     } finally {
       setSaving(false)
     }

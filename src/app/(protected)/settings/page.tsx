@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useToast } from '@/components/ui/Toast'
 import { User, Mail, Globe, Eye, EyeOff, Save, Shield, Bell, Palette, Lock, Download, Clock, Check, ShoppingCart } from 'lucide-react'
 import { ProfileIcon, getIconComponent } from '@/lib/profile-icons'
 import Link from 'next/link'
@@ -64,6 +65,7 @@ const getIconDisplayName = (iconId: string): string => {
 }
 
 export default function SettingsPage() {
+  const { showToast } = useToast()
   const [profile, setProfile] = useState<Profile>({
     id: '', username: '', full_name: '', avatar_url: null, profile_icon: null,
     bio: null, website: null, is_public: true, show_on_leaderboard: true, timezone: 'Asia/Kolkata'
@@ -207,7 +209,7 @@ export default function SettingsPage() {
       setTimeout(() => setSaved(false), 2000)
     } catch (error) {
       console.error('Error saving:', error)
-      alert('Error saving settings')
+      showToast('Error saving settings', 'error')
     } finally {
       setSaving(false)
     }
@@ -299,7 +301,7 @@ export default function SettingsPage() {
       a.click()
     } catch (error) {
       console.error('Export error:', error)
-      alert('Error exporting data')
+      showToast('Error exporting data', 'error')
     }
   }
 
@@ -351,7 +353,7 @@ export default function SettingsPage() {
       window.location.href = '/login'
     } catch (error) {
       console.error('Delete error:', error)
-      alert('Error deleting account. Please try again or contact support.')
+      showToast('Error deleting account. Please try again or contact support.', 'error')
     }
   }
 

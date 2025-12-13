@@ -1,9 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import { useToast } from '@/components/ui/Toast'
 import { Bell, Send, Users, CheckCircle2, AlertCircle, Info } from 'lucide-react'
 
 export default function AdminNotificationsPage() {
+  const { showToast } = useToast()
   const [notification, setNotification] = useState({
     title: '',
     message: '',
@@ -15,7 +17,7 @@ export default function AdminNotificationsPage() {
 
   const handleSend = async () => {
     if (!notification.title || !notification.message) {
-      alert('Please fill in all fields')
+      showToast('Please fill in all fields', 'warning')
       return
     }
     

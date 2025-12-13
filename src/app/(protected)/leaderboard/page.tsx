@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useToast } from '@/components/ui/Toast'
 import { Trophy, Medal, Crown, Flame, Share2, Users, Calendar, Zap, Search, TrendingUp, Lock } from 'lucide-react'
 import { ProfileIcon } from '@/lib/profile-icons'
 import Link from 'next/link'
@@ -22,6 +23,7 @@ interface LeaderboardEntry {
 }
 
 export default function LeaderboardPage() {
+  const { showToast } = useToast()
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'weekly' | 'monthly' | 'alltime'>('weekly')
@@ -135,13 +137,13 @@ export default function LeaderboardPage() {
   }
 
   const shareAchievement = () => {
-    const text = `🏆 I'm ranked #${userStats.rank} on DevX Daily OS!\n📊 ${userStats.completions} habits completed\n🔥 ${userStats.streak} day streak\n⚡ Level ${userStats.level}\n\n#HabitTracking #Productivity`
+    const text = `🏆 I'm ranked #${userStats.rank} on Sadhana!\n📊 ${userStats.completions} habits completed\n🔥 ${userStats.streak} day streak\n⚡ Level ${userStats.level}\n\n#HabitTracking #Productivity #Sadhana`
     
     if (navigator.share) {
       navigator.share({ title: 'My Achievement', text, url: window.location.origin })
     } else {
       navigator.clipboard.writeText(text)
-      alert('Copied to clipboard!')
+      showToast('Copied to clipboard!', 'success')
     }
   }
 

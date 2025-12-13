@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useToast } from '@/components/ui/Toast'
 import { BookOpen, Smile, Meh, Frown, Heart, Trophy, AlertCircle, ChevronLeft, ChevronRight, Save, Sparkles } from 'lucide-react'
 
 interface JournalEntry {
@@ -23,6 +24,7 @@ const moods = [
 ]
 
 export default function JournalPage() {
+  const { showToast } = useToast()
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [entry, setEntry] = useState<JournalEntry>({
     date: selectedDate,
@@ -120,9 +122,10 @@ export default function JournalPage() {
 
       if (error) {
         console.error('Error saving journal:', error)
-        alert('Error saving journal entry')
+        showToast('Error saving journal entry', 'error')
       } else {
         setSaved(true)
+        showToast('Journal entry saved!', 'success')
         setTimeout(() => setSaved(false), 2000)
       }
     } catch (error) {

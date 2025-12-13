@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useToast } from '@/components/ui/Toast'
 import { 
   Target, Briefcase, Camera, DollarSign, 
   Plus, Check, Sunrise, Heart, Dumbbell,
@@ -724,6 +725,7 @@ const freelanceTemplates: Template[] = [
 ]
 
 export default function TemplatesPage() {
+  const { showToast } = useToast()
   const [selectedType, setSelectedType] = useState<'all' | 'habit' | 'project' | 'instagram' | 'freelance'>('all')
   const [applying, setApplying] = useState<string | null>(null)
   const supabase = createClient()
@@ -737,7 +739,7 @@ export default function TemplatesPage() {
     setApplying(template.id)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-      alert('Please log in to apply templates')
+      showToast('Please log in to apply templates', 'error')
       setApplying(null)
       return
     }
@@ -844,10 +846,10 @@ export default function TemplatesPage() {
         if (error) throw error
       }
 
-      alert(`✅ ${template.name} template applied successfully!`)
+      showToast(`${template.name} template applied successfully!`, 'success')
     } catch (error: any) {
       console.error('Error applying template:', error)
-      alert(`Error: ${error.message}`)
+      showToast(`Error: ${error.message}`, 'error')
     } finally {
       setApplying(null)
     }
