@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { CheckCircle2, Circle, Target, TrendingUp, Sunrise, Briefcase, Moon, Heart, Zap, Plus, Minus } from 'lucide-react'
+import { CheckCircle2, Circle, Target, TrendingUp, Sunrise, Briefcase, Moon, Heart, Zap, Plus, Minus, Timer } from 'lucide-react'
 import Link from 'next/link'
 
 interface Habit {
@@ -10,6 +11,7 @@ interface Habit {
   name: string
   type: 'boolean' | 'numeric'
   target_value: number | null
+  target_unit: string | null
   category: string
   completedToday: boolean
   currentValue: number
@@ -32,6 +34,7 @@ const categoryColors: Record<string, string> = {
 }
 
 export default function TodaysHabits() {
+  const router = useRouter()
   const [habits, setHabits] = useState<Habit[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -48,7 +51,7 @@ export default function TodaysHabits() {
 
       const { data: habitsData } = await supabase
         .from('habits')
-        .select('*')
+        .select('id, name, type, target_value, target_unit, category, created_at')
         .eq('user_id', user.id)
         .eq('is_active', true)
         .order('created_at')
@@ -74,6 +77,7 @@ export default function TodaysHabits() {
           name: habit.name,
           type: habit.type,
           target_value: habit.target_value,
+          target_unit: habit.target_unit,
           category: habit.category,
           completedToday,
           currentValue
@@ -352,15 +356,24 @@ export default function TodaysHabits() {
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  {/* Checkbox - works for both types */}
+                  {/* Checkbox - redirect time-based habits to focus page */}
                   <button
-                    onClick={() => toggleHabit(habit)}
+                    onClick={() => {
+                      // Time-based habits redirect to focus page
+                      if (habit.type === 'numeric' && habit.target_unit === 'minutes' && !habit.completedToday) {
+                        router.push(`/focus?habit=${habit.id}`)
+                      } else {
+                        toggleHabit(habit)
+                      }
+                    }}
                     className={`flex-shrink-0 transition-all ${
                       habit.completedToday ? 'text-accent-success' : 'text-foreground-muted hover:text-accent-primary'
                     }`}
                   >
                     {habit.completedToday ? (
                       <CheckCircle2 size={22} strokeWidth={2.5} />
+                    ) : habit.type === 'numeric' && habit.target_unit === 'minutes' ? (
+                      <Timer size={22} strokeWidth={2} className="text-blue-500" />
                     ) : (
                       <Circle size={22} strokeWidth={2} />
                     )}
@@ -380,29 +393,46 @@ export default function TodaysHabits() {
                     </h3>
                     {habit.type === 'numeric' && (
                       <div className="text-xs text-foreground-muted">
-                        {habit.currentValue} / {habit.target_value}
+                        {habit.currentValue} / {habit.target_value} {habit.target_unit || ''}
                       </div>
                     )}
                   </div>
 
                   {/* Numeric controls or coin badge */}
                   {habit.type === 'numeric' ? (
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); updateNumericValue(habit.id, -1) }}
-                        disabled={habit.currentValue <= 0}
-                        className="w-6 h-6 rounded-md bg-surface border border-border-subtle flex items-center justify-center hover:border-accent-primary disabled:opacity-40 disabled:cursor-not-allowed text-xs"
-                      >
-                        <Minus size={12} />
-                      </button>
-                      <span className="w-5 text-center text-xs font-medium">{habit.currentValue}</span>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); updateNumericValue(habit.id, 1) }}
-                        className="w-6 h-6 rounded-md bg-surface border border-border-subtle flex items-center justify-center hover:border-accent-primary text-xs"
-                      >
-                        <Plus size={12} />
-                      </button>
-                    </div>
+                    habit.target_unit === 'minutes' ? (
+                      // Time-based habits show focus button
+                      !habit.completedToday && (
+                        <button
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            router.push(`/focus?habit=${habit.id}`)
+                          }}
+                          className="px-2 py-1 bg-blue-500/10 text-blue-500 rounded text-xs font-medium hover:bg-blue-500/20 transition flex items-center gap-1"
+                        >
+                          <Timer size={10} />
+                          Focus
+                        </button>
+                      )
+                    ) : (
+                      // Non-time numeric habits show increment/decrement
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); updateNumericValue(habit.id, -1) }}
+                          disabled={habit.currentValue <= 0}
+                          className="w-6 h-6 rounded-md bg-surface border border-border-subtle flex items-center justify-center hover:border-accent-primary disabled:opacity-40 disabled:cursor-not-allowed text-xs"
+                        >
+                          <Minus size={12} />
+                        </button>
+                        <span className="w-5 text-center text-xs font-medium">{habit.currentValue}</span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); updateNumericValue(habit.id, 1) }}
+                          className="w-6 h-6 rounded-md bg-surface border border-border-subtle flex items-center justify-center hover:border-accent-primary text-xs"
+                        >
+                          <Plus size={12} />
+                        </button>
+                      </div>
+                    )
                   ) : !habit.completedToday && (
                     <div className="px-2 py-0.5 bg-yellow-500/10 rounded text-xs font-bold text-yellow-500">
                       +1

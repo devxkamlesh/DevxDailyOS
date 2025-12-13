@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Clock, CheckCircle2, Rocket, Instagram, Briefcase } from 'lucide-react'
+import { Clock, CheckCircle2, Rocket, Camera, Briefcase } from 'lucide-react'
 import Link from 'next/link'
 
 interface Activity {
@@ -103,7 +103,7 @@ export default function RecentActivity() {
             type: 'instagram',
             title: `New post: ${post.title || post.hook?.slice(0, 30) || 'Untitled'}`,
             timestamp: post.created_at,
-            icon: Instagram,
+            icon: Camera,
             color: 'text-purple-400',
             link: '/instagram'
           })

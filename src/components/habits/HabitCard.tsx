@@ -3,7 +3,8 @@
 import { Habit, HabitLog } from '@/types/database'
 import { createClient } from '@/lib/supabase/client'
 import { useState } from 'react'
-import { Check, Minus, Plus, Sunrise, Briefcase, Moon, Heart, Target } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Check, Minus, Plus, Sunrise, Briefcase, Moon, Heart, Target, Timer, Zap } from 'lucide-react'
 import { LucideIcon } from 'lucide-react'
 
 const categoryIcons: Record<string, LucideIcon> = {
@@ -24,12 +25,22 @@ export default function HabitCard({ habit, log, onUpdate }: HabitCardProps) {
   const [loading, setLoading] = useState(false)
   const [value, setValue] = useState(log?.value || 0)
   const supabase = createClient()
+  const router = useRouter()
+
+  // Check if this is a time-based habit (requires focus session)
+  const isTimeBasedHabit = habit.type === 'numeric' && habit.target_unit === 'minutes'
 
   const isCompleted = habit.type === 'boolean' 
     ? log?.completed 
     : (log?.value || 0) >= (habit.target_value || 1)
 
   const toggleHabit = async () => {
+    // Time-based habits must be completed through Focus page
+    if (isTimeBasedHabit) {
+      router.push(`/focus?habit=${habit.id}`)
+      return
+    }
+
     setLoading(true)
     const today = new Date().toISOString().split('T')[0]
     
@@ -62,6 +73,12 @@ export default function HabitCard({ habit, log, onUpdate }: HabitCardProps) {
   }
 
   const updateNumericValue = async (newValue: number) => {
+    // Time-based habits must be completed through Focus page
+    if (isTimeBasedHabit) {
+      router.push(`/focus?habit=${habit.id}`)
+      return
+    }
+
     if (newValue < 0) return
     setLoading(true)
     setValue(newValue)
@@ -97,6 +114,65 @@ export default function HabitCard({ habit, log, onUpdate }: HabitCardProps) {
     } finally {
       setLoading(false)
     }
+  }
+
+  // For time-based habits, show a "Start Focus" button
+  if (isTimeBasedHabit) {
+    return (
+      <div 
+        className={`bg-surface p-4 rounded-xl border transition ${
+          isCompleted 
+            ? 'border-accent-success/50 bg-accent-success/5' 
+            : 'border-border-subtle hover:border-accent-primary/30'
+        }`}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-accent-primary/10 rounded-lg">
+              <Timer size={20} className="text-accent-primary" />
+            </div>
+            <div>
+              <div className="font-medium">{habit.name}</div>
+              <div className="text-xs text-foreground-muted">
+                {value} / {habit.target_value} {habit.target_unit}
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => router.push(`/focus?habit=${habit.id}`)}
+            disabled={isCompleted}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition ${
+              isCompleted 
+                ? 'bg-accent-success/20 text-accent-success cursor-default' 
+                : 'bg-accent-primary text-white hover:opacity-90'
+            }`}
+          >
+            {isCompleted ? (
+              <>
+                <Check size={16} />
+                Done
+              </>
+            ) : (
+              <>
+                <Zap size={16} />
+                Focus
+              </>
+            )}
+          </button>
+        </div>
+        
+        {/* Progress bar */}
+        <div className="mt-3">
+          <div className="w-full bg-border-subtle rounded-full h-1.5">
+            <div
+              className={`h-1.5 rounded-full transition-all ${isCompleted ? 'bg-accent-success' : 'bg-accent-primary'}`}
+              style={{ width: `${Math.min((value / (habit.target_value || 1)) * 100, 100)}%` }}
+            />
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

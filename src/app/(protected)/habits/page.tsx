@@ -1,10 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Habit } from '@/types/database'
-import { Plus, X, Sunrise, Briefcase, Moon, Heart, Target, Edit2, Trash2, Eye, EyeOff, TrendingUp, Calendar, CheckCircle2, BarChart3, Award, Flame, Minus } from 'lucide-react'
+import { Plus, X, Sunrise, Briefcase, Moon, Heart, Target, Edit2, Trash2, Eye, EyeOff, TrendingUp, Calendar, CheckCircle2, BarChart3, Award, Flame, Minus, Zap, Clock, BookOpen, Weight, Dumbbell, Droplets, FileText, Timer, AlertCircle } from 'lucide-react'
 import { LucideIcon } from 'lucide-react'
+import { useSystemSettings } from '@/lib/useSystemSettings'
 
 const categories = ['morning', 'work', 'night', 'health', 'focus'] as const
 const categoryIcons: Record<string, LucideIcon> = {
@@ -51,10 +53,34 @@ export default function HabitsPage() {
     type: 'boolean' as 'boolean' | 'numeric',
     target_value: 1,
     target_unit: '',
-    is_active: true
+    is_active: true,
+    requires_focus: false,
+    target_time: 0,
+    min_session_time: 25
   })
   const [saving, setSaving] = useState(false)
+  const [limitError, setLimitError] = useState('')
   const supabase = createClient()
+  const router = useRouter()
+  const { settings: systemSettings } = useSystemSettings()
+
+  // Auto-update focus settings when unit changes to minutes
+  useEffect(() => {
+    if (formData.type === 'numeric' && formData.target_unit === 'minutes') {
+      setFormData(prev => ({
+        ...prev,
+        requires_focus: true,
+        target_time: prev.target_value
+      }))
+    } else if (formData.type === 'numeric' && formData.target_unit !== 'minutes') {
+      // Reset focus settings for non-time units
+      setFormData(prev => ({
+        ...prev,
+        requires_focus: false,
+        target_time: 0
+      }))
+    }
+  }, [formData.target_unit, formData.target_value, formData.type])
 
   const calculateAnalytics = async (habitData: Habit[]) => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -222,6 +248,7 @@ export default function HabitsPage() {
         target_value: formData.type === 'numeric' ? formData.target_value : null,
         target_unit: formData.type === 'numeric' ? formData.target_unit : null,
         is_active: formData.is_active
+        // Note: Focus fields (requires_focus, target_time, min_session_time) removed until database columns are added
       }
 
       if (editingHabit) {
@@ -232,6 +259,13 @@ export default function HabitsPage() {
           return
         }
       } else {
+        // Check habit limit before creating
+        if (systemSettings.max_habits_per_user > 0 && habits.length >= systemSettings.max_habits_per_user) {
+          setLimitError(`You've reached the maximum limit of ${systemSettings.max_habits_per_user} habits`)
+          setSaving(false)
+          return
+        }
+        
         const { error } = await supabase.from('habits').insert({ 
           ...payload, 
           user_id: user.id, 
@@ -262,7 +296,10 @@ export default function HabitsPage() {
       type: 'boolean',
       target_value: 1,
       target_unit: '',
-      is_active: true
+      is_active: true,
+      requires_focus: false,
+      target_time: 0,
+      min_session_time: 25
     })
     setShowForm(false)
     setEditingHabit(null)
@@ -270,6 +307,10 @@ export default function HabitsPage() {
 
   const openEdit = (habit: Habit) => {
     setEditingHabit(habit)
+    
+    // Auto-detect if this is a time-based habit
+    const isTimeBasedHabit = habit.type === 'numeric' && habit.target_unit === 'minutes'
+    
     setFormData({
       name: habit.name,
       description: habit.description || '',
@@ -277,7 +318,10 @@ export default function HabitsPage() {
       type: habit.type,
       target_value: habit.target_value || 1,
       target_unit: habit.target_unit || '',
-      is_active: habit.is_active
+      is_active: habit.is_active,
+      requires_focus: isTimeBasedHabit ? true : (habit.requires_focus || false),
+      target_time: isTimeBasedHabit ? (habit.target_value || 0) : (habit.target_time || 0),
+      min_session_time: habit.min_session_time || 25
     })
     setShowForm(true)
   }
@@ -588,82 +632,115 @@ export default function HabitsPage() {
                 <div className="space-y-2">
                   {habit.type === 'numeric' ? (
                     <>
-                      {/* Increment/Decrement Controls */}
-                      <div className="flex items-center gap-2">
+                      {/* Time-based habits redirect to Focus page */}
+                      {habit.target_unit === 'minutes' ? (
                         <button
-                          onClick={async () => {
-                            const today = new Date().toISOString().split('T')[0]
-                            const { data: { user } } = await supabase.auth.getUser()
-                            if (!user) return
-
-                            const newValue = Math.max(0, (habit.currentValue || 0) - 1)
-                            const completed = newValue >= (habit.target_value || 1)
-
-                            await supabase.from('habit_logs').upsert({
-                              user_id: user.id,
-                              habit_id: habit.id,
-                              date: today,
-                              completed,
-                              value: newValue
-                            }, { onConflict: 'user_id,habit_id,date' })
-
-                            fetchHabits()
-                          }}
-                          disabled={(habit.currentValue || 0) === 0}
-                          className="flex-1 py-3 bg-surface border-2 border-border-subtle rounded-xl hover:border-accent-primary/50 transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium"
+                          onClick={() => router.push(`/focus?habit=${habit.id}`)}
+                          disabled={habit.completedToday}
+                          className={`w-full py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                            habit.completedToday
+                              ? 'bg-accent-success text-white cursor-default shadow-lg shadow-accent-success/20'
+                              : 'bg-gradient-to-r from-accent-primary to-blue-500 text-white hover:opacity-90 shadow-lg shadow-accent-primary/20'
+                          }`}
                         >
-                          <Minus size={18} />
-                          -1
+                          {habit.completedToday ? (
+                            <>
+                              <CheckCircle2 size={18} />
+                              Completed Today
+                            </>
+                          ) : (
+                            <>
+                              <Timer size={18} />
+                              Start Focus Session
+                            </>
+                          )}
                         </button>
-                        
-                        <button
-                          onClick={async () => {
-                            const today = new Date().toISOString().split('T')[0]
-                            const { data: { user } } = await supabase.auth.getUser()
-                            if (!user) return
+                      ) : (
+                        <>
+                          {/* Increment/Decrement Controls for non-time habits */}
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={async () => {
+                                const today = new Date().toISOString().split('T')[0]
+                                const { data: { user } } = await supabase.auth.getUser()
+                                if (!user) return
 
-                            const newValue = (habit.currentValue || 0) + 1
-                            const completed = newValue >= (habit.target_value || 1)
+                                const newValue = Math.max(0, (habit.currentValue || 0) - 1)
+                                const completed = newValue >= (habit.target_value || 1)
 
-                            await supabase.from('habit_logs').upsert({
-                              user_id: user.id,
-                              habit_id: habit.id,
-                              date: today,
-                              completed,
-                              value: newValue
-                            }, { onConflict: 'user_id,habit_id,date' })
+                                await supabase.from('habit_logs').upsert({
+                                  user_id: user.id,
+                                  habit_id: habit.id,
+                                  date: today,
+                                  completed,
+                                  value: newValue,
+                                  completed_at: completed ? new Date().toISOString() : null,
+                                  duration_minutes: habit.target_unit === 'minutes' ? newValue : null
+                                }, { onConflict: 'user_id,habit_id,date' })
 
-                            fetchHabits()
-                          }}
-                          className="flex-1 py-3 bg-accent-primary text-white rounded-xl hover:opacity-90 transition flex items-center justify-center gap-2 font-medium shadow-lg shadow-accent-primary/20"
-                        >
-                          <Plus size={18} />
-                          +1
-                        </button>
-                      </div>
+                                fetchHabits()
+                              }}
+                              disabled={(habit.currentValue || 0) === 0}
+                              className="flex-1 py-3 bg-surface border-2 border-border-subtle rounded-xl hover:border-accent-primary/50 transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium"
+                            >
+                              <Minus size={18} />
+                              -1
+                            </button>
+                            
+                            <button
+                              onClick={async () => {
+                                const today = new Date().toISOString().split('T')[0]
+                                const { data: { user } } = await supabase.auth.getUser()
+                                if (!user) return
 
-                      {/* Quick Complete Button */}
-                      {!habit.completedToday && (
-                        <button
-                          onClick={async () => {
-                            const today = new Date().toISOString().split('T')[0]
-                            const { data: { user } } = await supabase.auth.getUser()
-                            if (!user) return
+                                const newValue = (habit.currentValue || 0) + 1
+                                const completed = newValue >= (habit.target_value || 1)
 
-                            await supabase.from('habit_logs').upsert({
-                              user_id: user.id,
-                              habit_id: habit.id,
-                              date: today,
-                              completed: true,
-                              value: habit.target_value
-                            }, { onConflict: 'user_id,habit_id,date' })
+                                await supabase.from('habit_logs').upsert({
+                                  user_id: user.id,
+                                  habit_id: habit.id,
+                                  date: today,
+                                  completed,
+                                  value: newValue,
+                                  completed_at: completed ? new Date().toISOString() : null,
+                                  duration_minutes: habit.target_unit === 'minutes' ? newValue : null
+                                }, { onConflict: 'user_id,habit_id,date' })
 
-                            fetchHabits()
-                          }}
-                          className="w-full py-2 bg-accent-success/10 text-accent-success rounded-lg hover:bg-accent-success/20 transition text-sm font-medium"
-                        >
-                          Complete Target ({habit.target_value} {habit.target_unit})
-                        </button>
+                                fetchHabits()
+                              }}
+                              className="flex-1 py-3 bg-accent-primary text-white rounded-xl hover:opacity-90 transition flex items-center justify-center gap-2 font-medium shadow-lg shadow-accent-primary/20"
+                            >
+                              <Plus size={18} />
+                              +1
+                            </button>
+                          </div>
+
+                          {/* Quick Complete Button for non-time habits only */}
+                          {!habit.completedToday && habit.target_unit !== 'minutes' && (
+                            <button
+                              onClick={async () => {
+                                const today = new Date().toISOString().split('T')[0]
+                                const { data: { user } } = await supabase.auth.getUser()
+                                if (!user) return
+
+                                await supabase.from('habit_logs').upsert({
+                                  user_id: user.id,
+                                  habit_id: habit.id,
+                                  date: today,
+                                  completed: true,
+                                  value: habit.target_value,
+                                  completed_at: new Date().toISOString(),
+                                  duration_minutes: habit.type === 'numeric' && habit.target_unit === 'minutes' ? habit.target_value : null
+                                }, { onConflict: 'user_id,habit_id,date' })
+
+                                fetchHabits()
+                              }}
+                              className="w-full py-2 bg-accent-success/10 text-accent-success rounded-lg hover:bg-accent-success/20 transition text-sm font-medium"
+                            >
+                              Complete Target ({habit.target_value} {habit.target_unit})
+                            </button>
+                          )}
+                        </>
                       )}
                     </>
                   ) : (
@@ -678,7 +755,8 @@ export default function HabitsPage() {
                           habit_id: habit.id,
                           date: today,
                           completed: !habit.completedToday,
-                          value: null
+                          value: null,
+                          completed_at: !habit.completedToday ? new Date().toISOString() : null
                         }, { onConflict: 'user_id,habit_id,date' })
 
                         fetchHabits()
@@ -840,29 +918,147 @@ export default function HabitsPage() {
                 <div className="p-5 bg-background rounded-xl border border-border-subtle">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium mb-2">Target Value *</label>
+                      <label className="block text-sm font-medium mb-2">
+                        {formData.target_unit === 'minutes' ? 'Min Session Time (minutes) *' : 'Target Value *'}
+                      </label>
                       <input
                         type="number"
                         value={formData.target_value}
                         onChange={(e) => setFormData({ ...formData, target_value: parseInt(e.target.value) || 1 })}
                         className="w-full px-4 py-3 bg-surface border border-border-subtle rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-primary transition"
                         min={1}
-                        placeholder="e.g., 30"
+                        placeholder={formData.target_unit === 'minutes' ? 'e.g., 25' : 'e.g., 30'}
                         required
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-2">Unit *</label>
-                      <input
-                        type="text"
-                        value={formData.target_unit}
-                        onChange={(e) => setFormData({ ...formData, target_unit: e.target.value })}
-                        className="w-full px-4 py-3 bg-surface border border-border-subtle rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-primary transition"
-                        placeholder="e.g., minutes, pages"
-                        required={formData.type === 'numeric'}
-                      />
+                      <div className="relative">
+                        {/* Icon overlay - positioned above select */}
+                        {formData.target_unit && formData.target_unit !== '' && (
+                          <div className="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none z-10">
+                            {formData.target_unit === 'minutes' && <Clock size={16} className="text-blue-500" />}
+                            {formData.target_unit === 'pages' && <BookOpen size={16} className="text-green-500" />}
+                            {formData.target_unit === 'kg' && <Weight size={16} className="text-purple-500" />}
+                            {formData.target_unit === 'reps' && <Dumbbell size={16} className="text-orange-500" />}
+                            {formData.target_unit === 'liters' && <Droplets size={16} className="text-blue-400" />}
+                            {formData.target_unit === 'other' && <FileText size={16} className="text-gray-500" />}
+                          </div>
+                        )}
+                        
+                        <select
+                          value={formData.target_unit}
+                          onChange={(e) => setFormData({ ...formData, target_unit: e.target.value })}
+                          className={`w-full py-3 bg-surface border border-border-subtle rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-primary transition relative ${
+                            formData.target_unit && formData.target_unit !== '' ? 'pl-10 pr-4' : 'px-4'
+                          }`}
+                          required={formData.type === 'numeric'}
+                        >
+                          <option value="">Select a unit</option>
+                          <option value="minutes">minutes (auto-enables focus)</option>
+                          <option value="pages">pages</option>
+                          <option value="kg">kg</option>
+                          <option value="reps">reps</option>
+                          <option value="liters">liters</option>
+                          <option value="other">Other (specify below)</option>
+                        </select>
+                      </div>
+                      {formData.target_unit === 'other' && (
+                        <input
+                          type="text"
+                          value=""
+                          onChange={(e) => setFormData({ ...formData, target_unit: e.target.value })}
+                          className="w-full px-4 py-3 bg-surface border border-border-subtle rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-primary transition mt-2"
+                          placeholder="Enter your unit (e.g., glasses, steps, words)"
+                          required
+                        />
+                      )}
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Row 5: Focus Settings (only for numeric habits) */}
+              {formData.type === 'numeric' && (
+                <div className="p-5 bg-gradient-to-br from-blue-500/5 to-purple-500/5 rounded-xl border border-blue-500/20">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 bg-blue-500/20 rounded-lg">
+                      <Zap size={20} className="text-blue-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Focus Integration</h3>
+                      <p className="text-sm text-foreground-muted">
+                        {formData.target_unit === 'minutes' 
+                          ? 'Automatically detected time-based habit - enable focus sessions'
+                          : 'Enable focused work sessions for this habit'
+                        }
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Auto-detect for minutes */}
+                  {formData.target_unit === 'minutes' ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+                        <CheckCircle2 size={20} className="text-green-500" />
+                        <div className="flex-1">
+                          <p className="font-medium text-green-700 dark:text-green-400">
+                            Focus integration auto-enabled for time-based habit
+                          </p>
+                          <p className="text-sm text-green-600 dark:text-green-500">
+                            Using {formData.target_value} minutes as both target and session time
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Manual focus integration for other units */
+                    <div className="space-y-4">
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.requires_focus}
+                          onChange={(e) => setFormData({ ...formData, requires_focus: e.target.checked })}
+                          className="w-5 h-5 accent-blue-500"
+                        />
+                        <span className="font-medium">This habit requires focused work time</span>
+                      </label>
+
+                      {formData.requires_focus && (
+                        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border-subtle">
+                          <div>
+                            <label className="block text-sm font-medium mb-2">Target Focus Time (minutes) *</label>
+                            <input
+                              type="number"
+                              value={formData.target_time}
+                              onChange={(e) => setFormData({ ...formData, target_time: parseInt(e.target.value) || 0 })}
+                              className="w-full px-4 py-3 bg-surface border border-border-subtle rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                              min={1}
+                              placeholder="e.g., 60"
+                              required={formData.requires_focus}
+                            />
+                            <p className="text-xs text-foreground-muted mt-1">Daily focus time goal</p>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-2">Min Session Time (minutes)</label>
+                            <select
+                              value={formData.min_session_time}
+                              onChange={(e) => setFormData({ ...formData, min_session_time: parseInt(e.target.value) })}
+                              className="w-full px-4 py-3 bg-surface border border-border-subtle rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                            >
+                              <option value={15}>15 minutes</option>
+                              <option value={25}>25 minutes (Pomodoro)</option>
+                              <option value={30}>30 minutes</option>
+                              <option value={45}>45 minutes</option>
+                              <option value={60}>60 minutes</option>
+                              <option value={90}>90 minutes</option>
+                            </select>
+                            <p className="text-xs text-foreground-muted mt-1">Minimum session duration</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Trophy, Medal, Crown, Flame, Share2, Users, Calendar, Zap, Search, TrendingUp } from 'lucide-react'
+import { Trophy, Medal, Crown, Flame, Share2, Users, Calendar, Zap, Search, TrendingUp, Lock } from 'lucide-react'
 import { ProfileIcon } from '@/lib/profile-icons'
 import Link from 'next/link'
+import { useSystemSettings } from '@/lib/useSystemSettings'
 
 interface LeaderboardEntry {
   user_id: string
@@ -27,10 +28,28 @@ export default function LeaderboardPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [userStats, setUserStats] = useState({ rank: 0, completions: 0, streak: 0, xp: 0, level: 1 })
   const [searchQuery, setSearchQuery] = useState('')
+  const { settings: systemSettings, loading: settingsLoading } = useSystemSettings()
 
   useEffect(() => {
-    fetchLeaderboard()
-  }, [activeTab])
+    if (!settingsLoading && systemSettings.leaderboard_enabled) {
+      fetchLeaderboard()
+    }
+  }, [activeTab, settingsLoading, systemSettings.leaderboard_enabled])
+
+  // Check if leaderboard is disabled
+  if (!settingsLoading && !systemSettings.leaderboard_enabled) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <div className="p-4 bg-yellow-500/10 rounded-full mb-4">
+          <Lock size={48} className="text-yellow-500" />
+        </div>
+        <h1 className="text-2xl font-bold mb-2">Leaderboard Unavailable</h1>
+        <p className="text-foreground-muted max-w-md">
+          The leaderboard is currently disabled by the administrator. Please check back later.
+        </p>
+      </div>
+    )
+  }
 
   const fetchLeaderboard = async () => {
     setLoading(true)

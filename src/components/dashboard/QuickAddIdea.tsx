@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Lightbulb, Instagram } from 'lucide-react'
+import { Plus, Lightbulb, Camera } from 'lucide-react'
 
 interface QuickAddIdeaProps {
   onAdd: () => void
@@ -86,7 +86,7 @@ export default function QuickAddIdea({ onAdd }: QuickAddIdeaProps) {
 
       <form onSubmit={addIgHook} className="flex gap-2">
         <div className="flex-1 relative">
-          <Instagram size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground-muted" />
+          <Camera size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground-muted" />
           <input
             type="text"
             value={igHook}

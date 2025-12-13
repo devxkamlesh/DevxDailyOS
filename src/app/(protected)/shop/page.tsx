@@ -3,386 +3,782 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { 
-  Coins, ShoppingCart, Crown, Check, Lock, X, 
-  User, Heart, Star, Zap, Trophy, Target, Flame, Shield,
-  Diamond, Gem, Palette, Music, Gamepad2, Coffee,
-  Rocket, Headphones, Laptop, Smartphone, Watch, Car,
-  Plane, Home, Gift, Briefcase, Book, Lightbulb,
-  Smile, Sun, Moon, Bot, Battery, Wand2,
-  Ghost, Swords, Medal, Skull, Cat, Dog, Bird
+  Coins, ShoppingCart, Check, Lock, X, 
+  User, Palette, Gift, Star, Tag, Ticket, Sparkles,
+  Zap, AlertCircle, IndianRupee, Crown, Rocket, Flame, 
+  Trophy, Heart, Shield, Target, Coffee, Music, Gamepad2,
+  Code, Brain, Gem, Moon, Trees, Sunset, Waves,
+  Volume2, BarChart2, Headphones, Bell, Wand2, Clock, MessageCircle,
+  ShoppingBag
 } from 'lucide-react'
 import { useTheme, ThemeId } from '@/components/ThemeProvider'
+import { useSystemSettings } from '@/lib/useSystemSettings'
+
+// Icon mapping for shop items
+const iconMap: Record<string, any> = {
+  // Avatars
+  user: User, crown: Crown, star: Star, rocket: Rocket, flame: Flame,
+  gem: Gem, trophy: Trophy, zap: Zap, heart: Heart, shield: Shield,
+  target: Target, coffee: Coffee, music: Music, 'gamepad-2': Gamepad2,
+  code: Code, brain: Brain,
+  // Golden Premium Avatars (same icons, different key)
+  'gold-crown': Crown, 'gold-star': Star, 'gold-trophy': Trophy,
+  'gold-gem': Gem, 'gold-flame': Flame, 'gold-shield': Shield,
+  // Themes
+  palette: Palette, sparkles: Sparkles,
+  default: Palette, ocean: Waves, sunset: Sunset, forest: Trees,
+  purple: Sparkles, gold: Coins, rose: Heart, midnight: Moon,
+  // Features
+  'volume-2': Volume2, 'bar-chart-2': BarChart2, headphones: Headphones,
+  bell: Bell, wand: Wand2, clock: Clock, 'message-circle': MessageCircle
+}
+
+// Check if icon is golden premium
+const isGoldenIcon = (icon: string | null) => icon?.startsWith('gold-')
+
+declare global {
+  interface Window {
+    Razorpay: any
+  }
+}
+
+interface ShopItem {
+  id: string
+  name: string
+  description: string | null
+  plan_type: 'theme' | 'avatar' | 'feature'
+  coin_price: number
+  icon: string | null
+  is_active: boolean
+}
+
+interface CoinPackage {
+  id: string
+  name: string
+  description: string | null
+  coins: number
+  bonus_coins: number
+  price_inr: number
+  is_popular: boolean
+  badge: string | null
+  sort_order: number
+}
 
 interface UserRewards {
   coins: number
-  gems: number
   current_theme: string
   current_avatar: string
   unlocked_themes: string[]
   unlocked_avatars: string[]
 }
 
-interface Theme {
+interface Coupon {
   id: string
-  name: string
-  price: number
-  gradient: string
-}
-
-interface ProfileIcon {
-  id: string
-  name: string
-  icon: any
-  price: number
-  free: boolean
-  category: 'basic' | 'premium' | 'exclusive'
-}
-
-interface CoinPackage {
-  id: string
-  name: string
-  coins: number
-  bonus: number
-  price: number
-  popular: boolean
-}
-
-interface PopupState {
-  show: boolean
-  type: 'success' | 'error' | 'info'
-  title: string
-  message: string
+  code: string
+  discount_type: 'percentage' | 'fixed'
+  discount_value: number
+  min_purchase: number
+  max_uses: number
+  used_count: number
+  expires_at: string | null
+  is_active: boolean
 }
 
 export default function ShopPage() {
+  const [items, setItems] = useState<ShopItem[]>([])
+  const [coinPackages, setCoinPackages] = useState<CoinPackage[]>([])
   const [rewards, setRewards] = useState<UserRewards>({
-    coins: 0, gems: 0, current_theme: 'default', current_avatar: 'user',
+    coins: 0, current_theme: 'default', current_avatar: 'user',
     unlocked_themes: ['default'], unlocked_avatars: ['user']
   })
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'themes' | 'icons' | 'coins'>('icons')
-  const [popup, setPopup] = useState<PopupState>({ show: false, type: 'info', title: '', message: '' })
-  const [showConfetti, setShowConfetti] = useState(false)
-  const [processingPayment, setProcessingPayment] = useState(false)
+  const [activeTab, setActiveTab] = useState<'buycoins' | 'avatar' | 'theme' | 'feature'>('buycoins')
+  const [couponCode, setCouponCode] = useState('')
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null)
+  const [couponError, setCouponError] = useState('')
+  const [processingPayment, setProcessingPayment] = useState<string | null>(null)
+  const [popup, setPopup] = useState<{ show: boolean; type: 'success' | 'error'; title: string; message: string }>({ 
+    show: false, type: 'success', title: '', message: '' 
+  })
   const { setTheme } = useTheme()
+  const { settings: systemSettings, loading: settingsLoading } = useSystemSettings()
+  const supabase = createClient()
 
+  // Check if shop is disabled
+  if (!settingsLoading && !systemSettings.shop_enabled) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <div className="p-4 bg-yellow-500/10 rounded-full mb-4">
+          <ShoppingBag size={48} className="text-yellow-500" />
+        </div>
+        <h1 className="text-2xl font-bold mb-2">Shop Temporarily Unavailable</h1>
+        <p className="text-foreground-muted max-w-md">
+          The shop is currently disabled by the administrator. Please check back later.
+        </p>
+      </div>
+    )
+  }
 
-  // Themes - 3x more coins
-  const themes: Theme[] = [
-    { id: 'default', name: 'Default', price: 0, gradient: 'from-zinc-800 to-zinc-900' },
-    { id: 'ocean', name: 'Ocean Blue', price: 300, gradient: 'from-blue-600 to-cyan-600' },
-    { id: 'sunset', name: 'Sunset', price: 450, gradient: 'from-orange-500 to-pink-500' },
-    { id: 'forest', name: 'Forest', price: 360, gradient: 'from-green-600 to-emerald-600' },
-    { id: 'purple', name: 'Royal Purple', price: 600, gradient: 'from-purple-600 to-indigo-600' },
-    { id: 'gold', name: 'Golden', price: 900, gradient: 'from-yellow-500 to-orange-400' },
-    { id: 'rose', name: 'Rose Gold', price: 750, gradient: 'from-pink-500 to-rose-400' },
-    { id: 'midnight', name: 'Midnight', price: 540, gradient: 'from-slate-900 to-blue-900' },
-  ]
+  useEffect(() => {
+    fetchData()
+    loadRazorpayScript()
+  }, [])
 
-  // Profile Icons with Lucide React icons - LARGER AND CLEARER
-  const profileIcons: ProfileIcon[] = [
-    // Free Basic Icons (user icon removed - it's default for everyone)
-    { id: 'smile', name: 'Smile', icon: Smile, price: 0, free: true, category: 'basic' },
-    { id: 'heart', name: 'Heart', icon: Heart, price: 0, free: true, category: 'basic' },
-    { id: 'star', name: 'Star', icon: Star, price: 0, free: true, category: 'basic' },
-    { id: 'sun', name: 'Sun', icon: Sun, price: 0, free: true, category: 'basic' },
-    { id: 'moon', name: 'Moon', icon: Moon, price: 0, free: true, category: 'basic' },
-    
-    // Premium Icons
-    { id: 'zap', name: 'Lightning', icon: Zap, price: 50, free: false, category: 'premium' },
-    { id: 'trophy', name: 'Trophy', icon: Trophy, price: 75, free: false, category: 'premium' },
-    { id: 'target', name: 'Target', icon: Target, price: 60, free: false, category: 'premium' },
-    { id: 'flame', name: 'Fire', icon: Flame, price: 80, free: false, category: 'premium' },
-    { id: 'shield', name: 'Shield', icon: Shield, price: 90, free: false, category: 'premium' },
-    { id: 'diamond', name: 'Diamond', icon: Diamond, price: 120, free: false, category: 'premium' },
-    { id: 'gem', name: 'Gem', icon: Gem, price: 100, free: false, category: 'premium' },
-    { id: 'crown', name: 'Crown', icon: Crown, price: 150, free: false, category: 'premium' },
-    { id: 'rocket', name: 'Rocket', icon: Rocket, price: 110, free: false, category: 'premium' },
-    { id: 'coffee', name: 'Coffee', icon: Coffee, price: 70, free: false, category: 'premium' },
-    { id: 'music', name: 'Music', icon: Music, price: 85, free: false, category: 'premium' },
-    { id: 'gamepad', name: 'Gaming', icon: Gamepad2, price: 95, free: false, category: 'premium' },
-    { id: 'bot', name: 'Robot', icon: Bot, price: 100, free: false, category: 'premium' },
-    { id: 'battery', name: 'Battery', icon: Battery, price: 80, free: false, category: 'premium' },
-    { id: 'wand', name: 'Wizard', icon: Wand2, price: 90, free: false, category: 'premium' },
-    { id: 'ghost', name: 'Ghost', icon: Ghost, price: 85, free: false, category: 'premium' },
-    
-    // Exclusive Icons
-    { id: 'headphones', name: 'Headphones', icon: Headphones, price: 200, free: false, category: 'exclusive' },
-    { id: 'laptop', name: 'Laptop', icon: Laptop, price: 180, free: false, category: 'exclusive' },
-    { id: 'smartphone', name: 'Phone', icon: Smartphone, price: 160, free: false, category: 'exclusive' },
-    { id: 'watch', name: 'Watch', icon: Watch, price: 220, free: false, category: 'exclusive' },
-    { id: 'car', name: 'Car', icon: Car, price: 250, free: false, category: 'exclusive' },
-    { id: 'plane', name: 'Plane', icon: Plane, price: 300, free: false, category: 'exclusive' },
-    { id: 'home', name: 'Home', icon: Home, price: 190, free: false, category: 'exclusive' },
-    { id: 'briefcase', name: 'Business', icon: Briefcase, price: 210, free: false, category: 'exclusive' },
-    { id: 'book', name: 'Book', icon: Book, price: 170, free: false, category: 'exclusive' },
-    { id: 'lightbulb', name: 'Idea', icon: Lightbulb, price: 240, free: false, category: 'exclusive' },
-    { id: 'swords', name: 'Warrior', icon: Swords, price: 280, free: false, category: 'exclusive' },
-    { id: 'medal', name: 'Medal', icon: Medal, price: 260, free: false, category: 'exclusive' },
-    { id: 'skull', name: 'Skull', icon: Skull, price: 300, free: false, category: 'exclusive' },
-    { id: 'cat', name: 'Cat', icon: Cat, price: 200, free: false, category: 'exclusive' },
-    { id: 'dog', name: 'Dog', icon: Dog, price: 200, free: false, category: 'exclusive' },
-    { id: 'bird', name: 'Bird', icon: Bird, price: 180, free: false, category: 'exclusive' },
-  ]
+  const loadRazorpayScript = () => {
+    if (document.getElementById('razorpay-script')) return
+    const script = document.createElement('script')
+    script.id = 'razorpay-script'
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.async = true
+    document.body.appendChild(script)
+  }
 
-  // Coin Packages
-  const coinPackages: CoinPackage[] = [
-    { id: 'starter', name: 'Starter Pack', coins: 100, bonus: 0, price: 49, popular: false },
-    { id: 'popular', name: 'Popular Pack', coins: 250, bonus: 50, price: 99, popular: true },
-    { id: 'value', name: 'Value Pack', coins: 500, bonus: 150, price: 199, popular: false },
-    { id: 'mega', name: 'Mega Pack', coins: 1000, bonus: 400, price: 399, popular: false },
-  ]
-
-  useEffect(() => { fetchUserRewards() }, [])
-
-  const fetchUserRewards = async () => {
+  const fetchData = async () => {
     try {
-      const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const { data } = await supabase.from('user_rewards').select('*').eq('user_id', user.id).single()
-      if (data) {
-        // Remove duplicates from arrays
-        const unlockedAvatars = [...new Set(data.unlocked_avatars || ['user'])] as string[]
-        const unlockedThemes = [...new Set(data.unlocked_themes || ['default'])] as string[]
-        
+      // Fetch shop items from database (admin-added)
+      const { data: shopItems } = await supabase
+        .from('shop_plans')
+        .select('*')
+        .eq('is_active', true)
+        .order('coin_price')
+
+      // Fetch coin packages from database
+      const { data: packages } = await supabase
+        .from('coin_packages')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order')
+
+      // Fetch user rewards
+      const { data: userRewards } = await supabase
+        .from('user_rewards')
+        .select('coins, current_theme, current_avatar, unlocked_themes, unlocked_avatars')
+        .eq('user_id', user.id)
+        .single()
+
+      setItems(shopItems || [])
+      setCoinPackages(packages || [])
+      if (userRewards) {
         setRewards({
-          coins: data.coins || 0,
-          gems: data.gems || 0,
-          current_theme: data.current_theme || 'default',
-          current_avatar: data.current_avatar || 'user',
-          unlocked_themes: unlockedThemes,
-          unlocked_avatars: unlockedAvatars
+          coins: userRewards.coins || 0,
+          current_theme: userRewards.current_theme || 'default',
+          current_avatar: userRewards.current_avatar || 'user',
+          unlocked_themes: userRewards.unlocked_themes || ['default'],
+          unlocked_avatars: userRewards.unlocked_avatars || ['user']
         })
       }
     } catch (error) {
-      console.error('Error fetching rewards:', error)
+      console.error('Error:', error)
     } finally {
       setLoading(false)
     }
   }
 
-
-  const purchaseItem = async (type: 'theme' | 'avatar', item: Theme | ProfileIcon) => {
-    if (type === 'theme') {
-      const theme = item as Theme
-      if (rewards.unlocked_themes.includes(theme.id)) {
-        await updateUserRewards({ current_theme: theme.id })
-        setTheme(theme.id as ThemeId) // Apply theme immediately
-        showPopup('success', 'Theme Equipped!', `${theme.name} theme is now active`)
-        return
-      }
-      if (rewards.coins < theme.price) {
-        showPopup('error', 'Insufficient Coins', `You need ${theme.price - rewards.coins} more coins`)
-        return
-      }
-      const newUnlockedThemes = [...new Set([...rewards.unlocked_themes, theme.id])]
-      await updateUserRewards({
-        coins: rewards.coins - theme.price,
-        unlocked_themes: newUnlockedThemes,
-        current_theme: theme.id
-      })
-      setTheme(theme.id as ThemeId) // Apply theme immediately
-      showPopup('success', 'Theme Purchased!', `${theme.name} theme unlocked and equipped`)
-      triggerConfetti()
-    } else {
-      const icon = item as ProfileIcon
-      if (rewards.unlocked_avatars.includes(icon.id)) {
-        await updateUserRewards({ current_avatar: icon.id })
-        showPopup('success', 'Icon Equipped!', `${icon.name} icon is now active`)
-        return
-      }
-      if (icon.free) {
-        const newUnlockedAvatars = [...new Set([...rewards.unlocked_avatars, icon.id])]
-        await updateUserRewards({ unlocked_avatars: newUnlockedAvatars, current_avatar: icon.id })
-        showPopup('success', 'Icon Unlocked!', `${icon.name} icon equipped`)
-        return
-      }
-      if (rewards.coins < icon.price) {
-        showPopup('error', 'Insufficient Coins', `You need ${icon.price - rewards.coins} more coins`)
-        return
-      }
-      const newUnlockedAvatars = [...new Set([...rewards.unlocked_avatars, icon.id])]
-      await updateUserRewards({
-        coins: rewards.coins - icon.price,
-        unlocked_avatars: newUnlockedAvatars,
-        current_avatar: icon.id
-      })
-      showPopup('success', 'Icon Purchased!', `${icon.name} icon unlocked and equipped`)
-      triggerConfetti()
+  // Calculate discount for coin packages (real money)
+  const calculatePackageDiscount = (priceInr: number): number => {
+    if (!appliedCoupon) return 0
+    if (priceInr < appliedCoupon.min_purchase) return 0
+    
+    if (appliedCoupon.discount_type === 'percentage') {
+      return Math.floor(priceInr * (appliedCoupon.discount_value / 100))
     }
-  }
-
-  const updateUserRewards = async (updates: Partial<UserRewards>) => {
-    try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      
-      await supabase.from('user_rewards').upsert({ user_id: user.id, ...updates }, { onConflict: 'user_id' })
-      
-      // Sync avatar to profiles table for leaderboard using robust sync function
-      if (updates.current_avatar) {
-        const { syncProfileIcon } = await import('@/lib/profile-sync')
-        const success = await syncProfileIcon(user.id, updates.current_avatar)
-        if (!success) {
-          console.warn('Profile icon sync partially failed, but continuing...')
-        }
-      }
-      
-      setRewards(prev => ({ ...prev, ...updates }))
-    } catch (error) {
-      console.error('Error updating rewards:', error)
-    }
+    return Math.min(appliedCoupon.discount_value, priceInr)
   }
 
   const handleBuyCoins = async (pkg: CoinPackage) => {
-    setProcessingPayment(true)
-    setTimeout(() => {
-      const totalCoins = pkg.coins + pkg.bonus
-      updateUserRewards({ coins: rewards.coins + totalCoins })
-      showPopup('success', 'Coins Purchased!', `${totalCoins} coins added to your wallet`)
-      triggerConfetti()
-      setProcessingPayment(false)
-    }, 1500)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    setProcessingPayment(pkg.id)
+
+    // Apply coupon discount
+    const discount = calculatePackageDiscount(pkg.price_inr)
+    const finalPrice = pkg.price_inr - discount
+
+    try {
+      // Create Razorpay order via API
+      const response = await fetch('/api/razorpay/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: finalPrice,
+          currency: 'INR',
+          receipt: `rcpt_${Date.now()}`,
+          notes: {
+            package_id: pkg.id,
+            package_name: pkg.name,
+            coins: pkg.coins,
+            bonus: pkg.bonus_coins,
+            coupon_code: appliedCoupon?.code || null,
+            discount_applied: discount
+          }
+        })
+      })
+
+      const result = await response.json()
+      if (!result.success || !result.order?.id) {
+        throw new Error(result.error || 'Failed to create order')
+      }
+
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: finalPrice,
+        currency: 'INR',
+        name: 'DevX Daily OS',
+        description: `${pkg.name} - ${pkg.coins + pkg.bonus_coins} Coins`,
+        order_id: result.order.id,
+        handler: async (razorpayResponse: any) => {
+          // Verify payment and add coins
+          const verifyRes = await fetch('/api/razorpay/verify-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              razorpay_order_id: razorpayResponse.razorpay_order_id,
+              razorpay_payment_id: razorpayResponse.razorpay_payment_id,
+              razorpay_signature: razorpayResponse.razorpay_signature,
+              package_id: pkg.id,
+              coins: pkg.coins,
+              bonus: pkg.bonus_coins
+            })
+          })
+
+          const verifyResult = await verifyRes.json()
+          if (verifyResult.success) {
+            // Update coupon usage if applied
+            if (appliedCoupon && discount > 0) {
+              await supabase.from('coupons').update({ 
+                used_count: appliedCoupon.used_count + 1 
+              }).eq('id', appliedCoupon.id)
+              setAppliedCoupon(null)
+            }
+            
+            setRewards(prev => ({ ...prev, coins: prev.coins + pkg.coins + pkg.bonus_coins }))
+            showPopup('success', 'Payment Successful!', `${pkg.coins + pkg.bonus_coins} coins added to your wallet!`)
+          } else {
+            showPopup('error', 'Payment Failed', verifyResult.error || 'Please contact support if amount was deducted.')
+          }
+        },
+        prefill: { email: user.email },
+        theme: { color: '#8B5CF6' }
+      }
+
+      const razorpay = new window.Razorpay(options)
+      razorpay.open()
+    } catch (error: any) {
+      console.error('Payment error:', error)
+      showPopup('error', 'Payment Error', error.message || 'Something went wrong. Please try again.')
+    } finally {
+      setProcessingPayment(null)
+    }
   }
 
-  const showPopup = (type: PopupState['type'], title: string, message: string) => {
+  const applyCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponError('Please enter a coupon code')
+      return
+    }
+
+    setCouponError('')
+    try {
+      const { data: coupon, error } = await supabase
+        .from('coupons')
+        .select('*')
+        .eq('code', couponCode.toUpperCase())
+        .eq('is_active', true)
+        .single()
+
+      if (error || !coupon) {
+        setCouponError('Invalid coupon code')
+        return
+      }
+
+      // Check expiry
+      if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) {
+        setCouponError('This coupon has expired')
+        return
+      }
+
+      // Check usage limit
+      if (coupon.max_uses > 0 && coupon.used_count >= coupon.max_uses) {
+        setCouponError('This coupon has reached its usage limit')
+        return
+      }
+
+      setAppliedCoupon(coupon)
+      setCouponCode('')
+    } catch (error) {
+      setCouponError('Error applying coupon')
+    }
+  }
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null)
+    setCouponError('')
+  }
+
+  const purchaseItem = async (item: ShopItem) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const itemKey = item.icon || item.id // Use icon as identifier
+    const finalPrice = item.coin_price // No coupon for coin purchases
+
+    // Check if already owned
+    const isOwned = item.plan_type === 'theme' 
+      ? rewards.unlocked_themes.includes(itemKey)
+      : item.plan_type === 'avatar'
+      ? rewards.unlocked_avatars.includes(itemKey)
+      : false
+
+    if (isOwned) {
+      // Just equip it
+      if (item.plan_type === 'theme') {
+        await supabase.from('user_rewards').update({ current_theme: itemKey }).eq('user_id', user.id)
+        setRewards(prev => ({ ...prev, current_theme: itemKey }))
+        setTheme(itemKey as ThemeId)
+        showPopup('success', 'Theme Equipped!', `${item.name} is now active`)
+      } else if (item.plan_type === 'avatar') {
+        await supabase.from('user_rewards').update({ current_avatar: itemKey }).eq('user_id', user.id)
+        setRewards(prev => ({ ...prev, current_avatar: itemKey }))
+        showPopup('success', 'Avatar Equipped!', `${item.name} is now active`)
+      }
+      return
+    }
+
+    // Check coins
+    if (rewards.coins < finalPrice) {
+      showPopup('error', 'Insufficient Coins', `You need ${finalPrice - rewards.coins} more coins`)
+      return
+    }
+
+    // Purchase
+    const updates: any = { coins: rewards.coins - finalPrice }
+    
+    if (item.plan_type === 'theme') {
+      updates.unlocked_themes = [...new Set([...rewards.unlocked_themes, itemKey])]
+      updates.current_theme = itemKey
+    } else if (item.plan_type === 'avatar') {
+      updates.unlocked_avatars = [...new Set([...rewards.unlocked_avatars, itemKey])]
+      updates.current_avatar = itemKey
+    }
+
+    await supabase.from('user_rewards').update(updates).eq('user_id', user.id)
+
+    // Update local state
+    setRewards(prev => ({ ...prev, ...updates }))
+    
+    if (item.plan_type === 'theme') {
+      setTheme(itemKey as ThemeId)
+    }
+
+    showPopup('success', 'Purchase Successful!', `${item.name} unlocked and equipped!`)
+  }
+
+  const showPopup = (type: 'success' | 'error', title: string, message: string) => {
     setPopup({ show: true, type, title, message })
   }
 
-  const closePopup = () => setPopup({ show: false, type: 'info', title: '', message: '' })
-
-  const triggerConfetti = () => {
-    setShowConfetti(true)
-    setTimeout(() => setShowConfetti(false), 3000)
-  }
+  const filteredItems = items.filter(item => item.plan_type === activeTab)
 
   if (loading) {
     return (
       <div className="space-y-6">
         <div className="h-20 bg-surface rounded-2xl animate-pulse" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-            <div key={i} className="h-32 bg-surface rounded-2xl animate-pulse" />
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="h-40 bg-surface rounded-2xl animate-pulse" />
           ))}
         </div>
       </div>
     )
   }
 
-
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <div className="p-3 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl">
-              <ShoppingCart className="text-purple-500" size={32} />
+          <h1 className="text-2xl font-bold flex items-center gap-3">
+            <div className="p-2.5 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl">
+              <ShoppingCart className="text-purple-500" size={24} />
             </div>
-            Premium Shop
+            Shop
           </h1>
-          <p className="text-foreground-muted mt-2">Customize your experience with themes and icons</p>
+          <p className="text-foreground-muted mt-1">Customize your experience</p>
         </div>
         
-        {/* Wallet - Only Coins */}
-        <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-xl">
-          <Coins className="text-yellow-500" size={28} />
+        {/* Wallet */}
+        <div className="flex items-center gap-3 px-5 py-3 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-xl">
+          <Coins className="text-yellow-500" size={24} />
           <div>
             <div className="text-xs text-foreground-muted">Your Coins</div>
-            <div className="text-2xl font-bold text-yellow-500">{rewards.coins.toLocaleString()}</div>
+            <div className="text-xl font-bold text-yellow-500">{rewards.coins.toLocaleString()}</div>
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 bg-surface p-1.5 rounded-xl border border-border-subtle">
+      <div className="flex gap-2 bg-surface p-1.5 rounded-xl border border-border-subtle overflow-x-auto">
         {[
-          { id: 'icons', label: 'Profile Icons', icon: User },
-          { id: 'themes', label: 'Themes', icon: Palette },
-          { id: 'coins', label: 'Buy Coins', icon: Coins, highlight: true }
+          { id: 'buycoins', label: 'Buy Coins', icon: IndianRupee },
+          { id: 'avatar', label: 'Avatars', icon: User },
+          { id: 'theme', label: 'Themes', icon: Palette },
+          { id: 'feature', label: 'Features', icon: Sparkles }
         ].map(tab => {
           const Icon = tab.icon
+          const count = tab.id === 'buycoins' 
+            ? coinPackages.length 
+            : items.filter(i => i.plan_type === tab.id).length
           return (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition whitespace-nowrap ${
                 activeTab === tab.id
-                  ? tab.highlight
-                    ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-black shadow-lg'
-                    : 'bg-accent-primary text-white shadow-lg'
-                  : 'text-foreground-muted hover:text-foreground hover:bg-background/50'
+                  ? 'bg-accent-primary text-white'
+                  : 'text-foreground-muted hover:text-foreground hover:bg-background'
               }`}
             >
-              <Icon size={20} />
+              <Icon size={18} />
               {tab.label}
+              {count > 0 && (
+                <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                  activeTab === tab.id ? 'bg-white/20' : 'bg-background'
+                }`}>
+                  {count}
+                </span>
+              )}
             </button>
           )
         })}
       </div>
 
-      {/* Content */}
-      {activeTab === 'icons' && <IconsSection profileIcons={profileIcons} rewards={rewards} purchaseItem={purchaseItem} />}
-      {activeTab === 'themes' && <ThemesSection themes={themes} rewards={rewards} purchaseItem={purchaseItem} />}
-      {activeTab === 'coins' && <CoinsSection coinPackages={coinPackages} handleBuyCoins={handleBuyCoins} processingPayment={processingPayment} />}
+      {/* Buy Coins Tab */}
+      {activeTab === 'buycoins' && (
+        <div className="space-y-4">
+          {/* Coupon Section - Only for Buy Coins */}
+          <div className="bg-surface rounded-2xl border border-border-subtle p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Ticket className="text-accent-primary" size={20} />
+              <span className="font-medium">Have a coupon code?</span>
+            </div>
+            
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                placeholder="Enter coupon code"
+                className="flex-1 px-4 py-2.5 bg-background border border-border-subtle rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-primary uppercase"
+                disabled={!!appliedCoupon}
+              />
+              {appliedCoupon ? (
+                <button
+                  onClick={removeCoupon}
+                  className="px-4 py-2.5 bg-red-500/10 text-red-400 rounded-xl hover:bg-red-500/20 transition"
+                >
+                  Remove
+                </button>
+              ) : (
+                <button
+                  onClick={applyCoupon}
+                  className="px-4 py-2.5 bg-accent-primary text-white rounded-xl hover:opacity-90 transition"
+                >
+                  Apply
+                </button>
+              )}
+            </div>
 
-      {/* Professional Popup */}
-      {popup.show && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div 
-            className="relative bg-surface rounded-2xl max-w-sm w-full shadow-xl border border-border-subtle overflow-hidden animate-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Status Bar */}
-            <div className={`h-1 w-full ${
-              popup.type === 'success' ? 'bg-accent-success' :
-              popup.type === 'error' ? 'bg-red-500' : 'bg-accent-primary'
-            }`} />
+            {couponError && (
+              <p className="text-red-400 text-sm mt-2 flex items-center gap-1">
+                <AlertCircle size={14} /> {couponError}
+              </p>
+            )}
 
-            {/* Content */}
-            <div className="p-6">
-              {/* Close Button */}
-              <button 
-                onClick={closePopup} 
-                className="absolute top-4 right-4 p-1 rounded-lg hover:bg-background transition-colors"
+            {appliedCoupon && (
+              <div className="mt-3 p-3 bg-accent-success/10 border border-accent-success/30 rounded-xl flex items-center gap-2">
+                <Tag className="text-accent-success" size={18} />
+                <span className="text-accent-success font-medium">
+                  {appliedCoupon.discount_type === 'percentage' 
+                    ? `${appliedCoupon.discount_value}% off on coin packages!` 
+                    : `₹${appliedCoupon.discount_value / 100} off on coin packages!`}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {coinPackages.length === 0 ? (
+            <div className="text-center py-16 bg-surface rounded-2xl border border-border-subtle">
+              <IndianRupee size={48} className="mx-auto mb-4 text-foreground-muted opacity-50" />
+              <p className="text-foreground-muted mb-2">No coin packages available</p>
+              <p className="text-sm text-foreground-muted">Check back later!</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {coinPackages.map((pkg) => {
+                const discount = calculatePackageDiscount(pkg.price_inr)
+                const finalPrice = pkg.price_inr - discount
+                
+                return (
+                  <div
+                    key={pkg.id}
+                    className={`relative bg-surface rounded-2xl border-2 p-5 transition-all hover:scale-[1.02] ${
+                      pkg.is_popular
+                        ? 'border-yellow-500/50 bg-yellow-500/5 shadow-lg shadow-yellow-500/10'
+                        : 'border-border-subtle hover:border-accent-primary/50'
+                    }`}
+                  >
+                    {/* Badge */}
+                    {pkg.badge && (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-yellow-500 text-black text-xs font-bold rounded-full">
+                        {pkg.badge}
+                      </div>
+                    )}
+
+                    {/* Discount Badge */}
+                    {discount > 0 && (
+                      <div className="absolute top-3 left-3 px-2 py-1 bg-accent-success text-white text-xs font-bold rounded-full">
+                        -{appliedCoupon?.discount_type === 'percentage' ? `${appliedCoupon.discount_value}%` : `₹${discount / 100}`}
+                      </div>
+                    )}
+
+                    {/* Popular Star */}
+                    {pkg.is_popular && (
+                      <div className="absolute top-3 right-3">
+                        <Star className="text-yellow-500 fill-yellow-500" size={20} />
+                      </div>
+                    )}
+
+                    {/* Coins Display */}
+                    <div className="text-center mb-4 pt-2">
+                      <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-yellow-500/20 to-orange-500/20 rounded-2xl mb-3">
+                        <Coins className="text-yellow-500" size={32} />
+                      </div>
+                      <h3 className="font-bold text-lg">{pkg.name}</h3>
+                      {pkg.description && (
+                        <p className="text-sm text-foreground-muted mt-1">{pkg.description}</p>
+                      )}
+                    </div>
+
+                    {/* Coins Info */}
+                    <div className="bg-background rounded-xl p-3 mb-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-foreground-muted">Base Coins</span>
+                        <span className="font-bold">{pkg.coins.toLocaleString()}</span>
+                      </div>
+                      {pkg.bonus_coins > 0 && (
+                        <div className="flex items-center justify-between text-green-500">
+                          <span>Bonus</span>
+                          <span className="font-bold">+{pkg.bonus_coins.toLocaleString()}</span>
+                        </div>
+                      )}
+                      <div className="border-t border-border-subtle mt-2 pt-2 flex items-center justify-between">
+                        <span className="font-medium">Total</span>
+                        <span className="font-bold text-yellow-500">
+                          {(pkg.coins + pkg.bonus_coins).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Price & Buy Button */}
+                    <button
+                      onClick={() => handleBuyCoins(pkg)}
+                      disabled={processingPayment === pkg.id}
+                      className={`w-full py-3 rounded-xl font-bold transition flex items-center justify-center gap-2 ${
+                        processingPayment === pkg.id
+                          ? 'bg-foreground-muted/20 cursor-wait'
+                          : 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:opacity-90'
+                      }`}
+                    >
+                      {processingPayment === pkg.id ? (
+                        <span>Processing...</span>
+                      ) : (
+                        <>
+                          <IndianRupee size={18} />
+                          {discount > 0 ? (
+                            <>
+                              <span className="line-through opacity-50">₹{(pkg.price_inr / 100).toFixed(0)}</span>
+                              <span>₹{(finalPrice / 100).toFixed(0)}</span>
+                            </>
+                          ) : (
+                            <span>₹{(pkg.price_inr / 100).toFixed(0)}</span>
+                          )}
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Payment Info */}
+          <div className="bg-surface rounded-xl border border-border-subtle p-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-blue-500/10 rounded-lg">
+                <Zap className="text-blue-500" size={20} />
+              </div>
+              <div>
+                <h4 className="font-medium mb-1">Secure Payment via Razorpay</h4>
+                <p className="text-sm text-foreground-muted">
+                  All payments are processed securely. Coins are added instantly after successful payment.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Items Grid */}
+      {activeTab !== 'buycoins' && (filteredItems.length === 0 ? (
+        <div className="text-center py-16 bg-surface rounded-2xl border border-border-subtle">
+          <Gift size={48} className="mx-auto mb-4 text-foreground-muted opacity-50" />
+          <p className="text-foreground-muted mb-2">No items available yet</p>
+          <p className="text-sm text-foreground-muted">Check back later for new items!</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          {filteredItems.map((item) => {
+            const itemKey = item.icon || item.id
+            const isOwned = item.plan_type === 'theme'
+              ? rewards.unlocked_themes.includes(itemKey)
+              : item.plan_type === 'avatar'
+              ? rewards.unlocked_avatars.includes(itemKey)
+              : false
+            
+            const isEquipped = item.plan_type === 'theme'
+              ? rewards.current_theme === itemKey
+              : item.plan_type === 'avatar'
+              ? rewards.current_avatar === itemKey
+              : false
+
+            const canAfford = rewards.coins >= item.coin_price
+            const IconComponent = item.icon ? (iconMap[item.icon] || User) : User
+            const isGolden = isGoldenIcon(item.icon)
+
+            return (
+              <div
+                key={item.id}
+                className={`relative bg-surface rounded-xl border-2 p-3 transition-all hover:scale-[1.02] ${
+                  isGolden
+                    ? 'border-yellow-500/50 bg-gradient-to-br from-yellow-500/5 to-orange-500/5'
+                    : isEquipped
+                    ? 'border-accent-primary bg-accent-primary/5'
+                    : isOwned
+                    ? 'border-accent-success/50'
+                    : 'border-border-subtle hover:border-accent-primary/50'
+                }`}
               >
-                <X size={18} className="text-foreground-muted" />
+                {/* Premium Badge */}
+                {isGolden && (
+                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-black text-[10px] font-bold rounded-full">
+                    PREMIUM
+                  </div>
+                )}
+
+                {/* Icon */}
+                <div className={`w-full aspect-square rounded-lg mb-2 flex items-center justify-center ${
+                  isGolden
+                    ? 'bg-gradient-to-br from-yellow-500/30 to-orange-500/30'
+                    : item.plan_type === 'theme' 
+                    ? 'bg-gradient-to-br from-purple-500/20 to-pink-500/20'
+                    : item.plan_type === 'avatar'
+                    ? 'bg-gradient-to-br from-blue-500/20 to-cyan-500/20'
+                    : 'bg-gradient-to-br from-yellow-500/20 to-orange-500/20'
+                }`}>
+                  <IconComponent size={28} className={
+                    isGolden ? 'text-yellow-400' :
+                    item.plan_type === 'theme' ? 'text-purple-400' :
+                    item.plan_type === 'avatar' ? 'text-blue-400' : 'text-yellow-400'
+                  } />
+                </div>
+
+                {/* Info */}
+                <h3 className="font-semibold text-sm mb-0.5 truncate">{item.name}</h3>
+                {item.description && (
+                  <p className="text-xs text-foreground-muted mb-2 line-clamp-1">{item.description}</p>
+                )}
+
+                {/* Price & Action */}
+                {isEquipped ? (
+                  <div className="flex items-center justify-center gap-1 py-1.5 bg-accent-primary/20 text-accent-primary rounded-lg text-xs font-medium">
+                    <Check size={12} /> Equipped
+                  </div>
+                ) : isOwned ? (
+                  <button
+                    onClick={() => purchaseItem(item)}
+                    className="w-full py-1.5 bg-accent-success/20 text-accent-success rounded-lg text-xs font-medium hover:bg-accent-success/30 transition"
+                  >
+                    Equip
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => purchaseItem(item)}
+                    disabled={!canAfford}
+                    className={`w-full py-1.5 rounded-lg text-xs font-medium transition flex items-center justify-center gap-1 ${
+                      canAfford
+                        ? 'bg-accent-primary text-white hover:opacity-90'
+                        : 'bg-background text-foreground-muted cursor-not-allowed'
+                    }`}
+                  >
+                    <Coins size={12} />
+                    <span>{item.coin_price}</span>
+                  </button>
+                )}
+
+                {/* Badges */}
+                {isOwned && !isEquipped && (
+                  <div className="absolute top-2 right-2 p-1 bg-accent-success rounded-full">
+                    <Check size={10} className="text-white" />
+                  </div>
+                )}
+                
+                {!isOwned && !canAfford && (
+                  <div className="absolute top-2 right-2">
+                    <Lock size={12} className="text-foreground-muted" />
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      ))}
+
+      {/* Popup */}
+      {popup.show && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-surface rounded-2xl max-w-sm w-full border border-border-subtle overflow-hidden">
+            <div className={`h-1 w-full ${popup.type === 'success' ? 'bg-accent-success' : 'bg-red-500'}`} />
+            <div className="p-6">
+              <button 
+                onClick={() => setPopup({ ...popup, show: false })}
+                className="absolute top-4 right-4 p-1 rounded-lg hover:bg-background"
+              >
+                <X size={18} />
               </button>
 
-              {/* Icon */}
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${
-                popup.type === 'success' ? 'bg-accent-success/10' :
-                popup.type === 'error' ? 'bg-red-500/10' : 'bg-accent-primary/10'
+                popup.type === 'success' ? 'bg-accent-success/10' : 'bg-red-500/10'
               }`}>
                 {popup.type === 'success' ? (
                   <Check size={24} className="text-accent-success" />
-                ) : popup.type === 'error' ? (
-                  <X size={24} className="text-red-500" />
                 ) : (
-                  <Zap size={24} className="text-accent-primary" />
+                  <X size={24} className="text-red-500" />
                 )}
               </div>
 
-              {/* Title & Message */}
-              <h3 className="text-xl font-semibold mb-2 text-foreground pr-6">
-                {popup.title}
-              </h3>
-              <p className="text-sm text-foreground-muted mb-6">
-                {popup.message}
-              </p>
+              <h3 className="text-xl font-bold mb-2">{popup.title}</h3>
+              <p className="text-foreground-muted mb-6">{popup.message}</p>
 
-              {/* Action Button */}
               <button
-                onClick={closePopup}
-                className={`w-full py-2.5 rounded-lg font-medium text-sm transition-all ${
+                onClick={() => setPopup({ ...popup, show: false })}
+                className={`w-full py-2.5 rounded-xl font-medium ${
                   popup.type === 'success' 
-                    ? 'bg-accent-success hover:bg-accent-success/90 text-white' :
-                  popup.type === 'error' 
-                    ? 'bg-red-500 hover:bg-red-600 text-white' : 
-                    'bg-accent-primary hover:bg-accent-primary/90 text-white'
+                    ? 'bg-accent-success text-white' 
+                    : 'bg-red-500 text-white'
                 }`}
               >
                 Continue
@@ -391,258 +787,6 @@ export default function ShopPage() {
           </div>
         </div>
       )}
-
-      {/* Subtle Confetti */}
-      {showConfetti && (
-        <div className="fixed inset-0 pointer-events-none z-40 flex items-center justify-center">
-          <div className="relative">
-            <div className="absolute -top-20 left-0 text-3xl animate-bounce opacity-80">✨</div>
-            <div className="absolute -top-16 right-0 text-3xl animate-bounce animation-delay-200 opacity-80">⭐</div>
-            <div className="absolute top-0 -left-16 text-3xl animate-bounce animation-delay-400 opacity-80">💫</div>
-            <div className="absolute top-0 -right-16 text-3xl animate-bounce animation-delay-600 opacity-80">✨</div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-
-// Icons Section - Purple for Premium, Gold for Exclusive
-function IconsSection({ profileIcons, rewards, purchaseItem }: any) {
-  const categories = [
-    { id: 'basic', label: 'Free Icons', desc: 'Available for everyone', color: 'green', icons: profileIcons.filter((i: ProfileIcon) => i.category === 'basic') },
-    { id: 'premium', label: 'Premium Icons', desc: 'Unlock with coins', color: 'purple', icons: profileIcons.filter((i: ProfileIcon) => i.category === 'premium') },
-    { id: 'exclusive', label: 'Exclusive Icons', desc: 'Rare and exclusive', color: 'yellow', icons: profileIcons.filter((i: ProfileIcon) => i.category === 'exclusive') },
-  ]
-
-  return (
-    <div className="space-y-8">
-      {categories.map(category => (
-        <div key={category.id} className={`bg-surface p-6 rounded-2xl border ${
-          category.color === 'green' ? 'border-green-500/30' :
-          category.color === 'purple' ? 'border-purple-500/30' : 'border-yellow-500/30'
-        }`}>
-          <div className="flex items-center gap-3 mb-6">
-            <div className={`p-3 rounded-xl ${
-              category.color === 'green' ? 'bg-green-500/10' :
-              category.color === 'purple' ? 'bg-purple-500/10' : 'bg-yellow-500/10'
-            }`}>
-              {category.color === 'green' ? <Gift className="text-green-500" size={28} /> :
-               category.color === 'purple' ? <Star className="text-purple-500" size={28} /> :
-               <Crown className="text-yellow-500" size={28} />}
-            </div>
-            <div>
-              <h3 className={`text-xl font-bold ${
-                category.color === 'green' ? 'text-green-400' :
-                category.color === 'purple' ? 'text-purple-400' : 'text-yellow-400'
-              }`}>{category.label}</h3>
-              <p className="text-sm text-foreground-muted">{category.desc}</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-4">
-            {category.icons.map((icon: ProfileIcon) => {
-              const Icon = icon.icon
-              const isUnlocked = rewards.unlocked_avatars.includes(icon.id)
-              const isEquipped = rewards.current_avatar === icon.id
-              const catColor = category.color
-              
-              return (
-                <button
-                  key={icon.id}
-                  onClick={() => purchaseItem('avatar', icon)}
-                  className={`relative p-4 rounded-xl border-2 transition-all hover:scale-105 group ${
-                    isEquipped
-                      ? 'border-accent-primary bg-accent-primary/20 scale-105 shadow-lg shadow-accent-primary/30'
-                      : isUnlocked
-                      ? 'border-green-500/50 bg-green-500/5 hover:border-accent-primary/50'
-                      : catColor === 'purple' 
-                        ? 'border-purple-500/30 hover:border-purple-500/60 bg-purple-500/5'
-                        : catColor === 'yellow'
-                        ? 'border-yellow-500/30 hover:border-yellow-500/60 bg-yellow-500/5'
-                        : 'border-border-subtle hover:border-green-500/50 bg-background/50'
-                  }`}
-                >
-                  <div className="flex flex-col items-center gap-2">
-                    <div className={`p-3 rounded-xl transition-all ${
-                      isEquipped ? 'bg-accent-primary/30' : 
-                      isUnlocked ? 'bg-green-500/10' : 
-                      catColor === 'purple' ? 'bg-purple-500/10 group-hover:bg-purple-500/20' :
-                      catColor === 'yellow' ? 'bg-yellow-500/10 group-hover:bg-yellow-500/20' :
-                      'bg-background group-hover:bg-green-500/10'
-                    }`}>
-                      <Icon 
-                        size={32} 
-                        strokeWidth={2}
-                        className={`${
-                          isEquipped ? 'text-accent-primary' : 
-                          isUnlocked ? 'text-green-400' : 
-                          catColor === 'purple' ? 'text-purple-400 group-hover:text-purple-300' :
-                          catColor === 'yellow' ? 'text-yellow-400 group-hover:text-yellow-300' :
-                          'text-foreground-muted group-hover:text-green-400'
-                        }`} 
-                      />
-                    </div>
-                    <div className="text-xs text-center font-medium truncate w-full">
-                      {icon.name}
-                    </div>
-                  </div>
-                  
-                  {isEquipped && (
-                    <div className="absolute -top-2 -right-2 p-1.5 bg-accent-primary rounded-full shadow-lg">
-                      <Check size={12} className="text-white" strokeWidth={3} />
-                    </div>
-                  )}
-                  
-                  {isUnlocked && !isEquipped && (
-                    <div className="absolute -top-2 -right-2 p-1.5 bg-green-500 rounded-full shadow-lg">
-                      <Check size={12} className="text-white" strokeWidth={3} />
-                    </div>
-                  )}
-                  
-                  {!isUnlocked && !icon.free && (
-                    <>
-                      <div className="absolute top-2 right-2">
-                        <Lock size={14} className="text-foreground-muted" />
-                      </div>
-                      <div className={`absolute -bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 px-2 py-1 text-xs font-bold rounded-full shadow-lg ${
-                        catColor === 'purple' ? 'bg-purple-500 text-white' : 'bg-yellow-500 text-black'
-                      }`}>
-                        <Coins size={12} /> {icon.price}
-                      </div>
-                    </>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-
-// Themes Section
-function ThemesSection({ themes, rewards, purchaseItem }: any) {
-  return (
-    <div className="bg-surface p-6 rounded-2xl border border-border-subtle">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="p-3 bg-purple-500/10 rounded-xl">
-          <Palette className="text-purple-500" size={28} />
-        </div>
-        <div>
-          <h2 className="text-2xl font-bold">Dashboard Themes</h2>
-          <p className="text-foreground-muted">Transform your workspace with beautiful themes</p>
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {themes.map((theme: Theme) => {
-          const isUnlocked = rewards.unlocked_themes.includes(theme.id)
-          const isEquipped = rewards.current_theme === theme.id
-          
-          return (
-            <button
-              key={theme.id}
-              onClick={() => purchaseItem('theme', theme)}
-              className={`group relative p-5 rounded-2xl border-2 transition-all hover:scale-105 ${
-                isEquipped
-                  ? 'border-accent-primary bg-accent-primary/10 shadow-lg shadow-accent-primary/20'
-                  : isUnlocked
-                  ? 'border-green-500/50 hover:border-accent-primary/50'
-                  : 'border-border-subtle hover:border-yellow-500/50'
-              }`}
-            >
-              <div className={`w-full h-24 rounded-xl mb-4 bg-gradient-to-br ${theme.gradient} shadow-inner`} />
-              <div className="text-base font-bold mb-2">{theme.name}</div>
-              {isEquipped ? (
-                <div className="flex items-center justify-center gap-1.5 text-sm text-accent-primary font-bold">
-                  <Check size={16} /> Equipped
-                </div>
-              ) : isUnlocked ? (
-                <div className="flex items-center justify-center gap-1.5 text-sm text-green-500 font-medium">
-                  <Check size={16} /> Owned
-                </div>
-              ) : (
-                <div className="flex items-center justify-center gap-1.5 text-sm font-bold text-yellow-500">
-                  <Coins size={16} /> {theme.price}
-                </div>
-              )}
-              {!isUnlocked && theme.price > 0 && (
-                <div className="absolute top-3 right-3">
-                  <Lock size={18} className="text-foreground-muted" />
-                </div>
-              )}
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-// Coins Section - Simple Design
-function CoinsSection({ coinPackages, handleBuyCoins, processingPayment }: any) {
-  return (
-    <div className="bg-surface p-6 rounded-2xl border border-border-subtle">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="p-3 bg-yellow-500/10 rounded-xl">
-          <Coins className="text-yellow-500" size={28} />
-        </div>
-        <div>
-          <h2 className="text-2xl font-bold">Buy Coins</h2>
-          <p className="text-foreground-muted">Get coins to unlock themes and icons</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {coinPackages.map((pkg: CoinPackage) => (
-          <div
-            key={pkg.id}
-            className={`relative p-5 rounded-xl border-2 transition-all hover:scale-105 ${
-              pkg.popular
-                ? 'border-yellow-500 bg-yellow-500/10'
-                : 'border-border-subtle bg-background/50'
-            }`}
-          >
-            {pkg.popular && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-yellow-500 text-black text-xs font-bold rounded-full">
-                BEST VALUE
-              </div>
-            )}
-            
-            <div className="text-center">
-              <div className="text-3xl font-bold text-yellow-500 mb-1">
-                {pkg.coins.toLocaleString()}
-              </div>
-              {pkg.bonus > 0 && (
-                <div className="text-sm text-accent-success font-medium mb-1">
-                  +{pkg.bonus} bonus
-                </div>
-              )}
-              <div className="text-sm text-foreground-muted mb-4">{pkg.name}</div>
-
-              <button
-                onClick={() => handleBuyCoins(pkg)}
-                disabled={processingPayment}
-                className={`w-full py-2.5 rounded-lg font-bold transition-all ${
-                  pkg.popular
-                    ? 'bg-yellow-500 text-black hover:bg-yellow-400'
-                    : 'bg-accent-primary text-white hover:bg-accent-primary/90'
-                } disabled:opacity-50`}
-              >
-                {processingPayment ? '...' : `₹${pkg.price}`}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-6 text-center text-sm text-foreground-muted">
-        🔒 Secure payments via Razorpay
-      </div>
     </div>
   )
 }

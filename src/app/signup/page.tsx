@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { UserX } from 'lucide-react'
 
 export default function SignupPage() {
   const [email, setEmail] = useState('')
@@ -12,8 +13,50 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [registrationEnabled, setRegistrationEnabled] = useState(true)
+  const [checkingSettings, setCheckingSettings] = useState(true)
   const router = useRouter()
   const supabase = createClient()
+
+  // Check if registration is enabled
+  useEffect(() => {
+    const checkRegistration = async () => {
+      try {
+        const { data } = await supabase
+          .from('system_settings')
+          .select('registration_enabled')
+          .single()
+        if (data) {
+          setRegistrationEnabled(data.registration_enabled ?? true)
+        }
+      } catch (e) {
+        // If error, assume registration is enabled
+      } finally {
+        setCheckingSettings(false)
+      }
+    }
+    checkRegistration()
+  }, [])
+
+  // Show registration disabled message
+  if (!checkingSettings && !registrationEnabled) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="text-center max-w-md">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-red-500/10 rounded-full mb-4">
+            <UserX size={32} className="text-red-500" />
+          </div>
+          <h1 className="text-2xl font-bold mb-2">Registration Closed</h1>
+          <p className="text-foreground-muted mb-6">
+            New user registration is currently disabled. Please check back later or contact the administrator.
+          </p>
+          <Link href="/login" className="text-accent-primary hover:underline">
+            Already have an account? Login
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()

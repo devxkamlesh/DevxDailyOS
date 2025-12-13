@@ -6,6 +6,7 @@ import {
   TrendingUp, Calendar, Target, Download, 
   BarChart3, Activity, Zap, ArrowUp, ArrowDown
 } from 'lucide-react'
+import Link from 'next/link'
 import {
   AreaChart,
   Area,
@@ -22,7 +23,8 @@ import {
   Line,
   Legend,
   RadialBarChart,
-  RadialBar
+  RadialBar,
+  ComposedChart
 } from 'recharts'
 
 interface HeatmapData {
@@ -43,6 +45,90 @@ interface CategoryStats {
   completed: number
   total: number
   percentage: number
+}
+
+
+// Separate component for Day of Week Analysis
+function DayOfWeekAnalysis() {
+  const [dayOfWeekData, setDayOfWeekData] = useState<{ day: string; percentage: number; avgCompletions: string }[]>([])
+  const [loading, setLoading] = useState(true)
+  const supabase = createClient()
+
+  useEffect(() => {
+    const fetchDayOfWeekData = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Fetch ALL habit logs (not filtered by time range)
+      const { data: allLogs } = await supabase
+        .from('habit_logs')
+        .select('date, completed')
+        .eq('user_id', user.id)
+        .order('date', { ascending: true })
+
+      if (!allLogs) {
+        setLoading(false)
+        return
+      }
+
+      const dayStats = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => {
+        const dayData = allLogs.filter(log => {
+          if (!log.date) return false
+          const date = new Date(log.date + 'T12:00:00')
+          return date.getDay() === index
+        })
+        
+        const totalDays = dayData.length || 1
+        const activeDays = dayData.filter(log => log.completed).length
+        const percentage = Math.round((activeDays / totalDays) * 100)
+        const avgCompletions = dayData.length > 0 
+          ? (dayData.filter(log => log.completed).length / new Set(dayData.map(log => log.date)).size).toFixed(1)
+          : '0'
+        
+        return { day, percentage, avgCompletions }
+      })
+
+      setDayOfWeekData(dayStats)
+      setLoading(false)
+    }
+
+    fetchDayOfWeekData()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-7 gap-2">
+        {Array.from({ length: 7 }).map((_, i) => (
+          <div key={i} className="text-center p-3 bg-background rounded-xl animate-pulse">
+            <div className="h-4 bg-surface rounded mb-2" />
+            <div className="h-8 bg-surface rounded mb-1" />
+            <div className="h-3 bg-surface rounded" />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid grid-cols-7 gap-2">
+      {dayOfWeekData.map(({ day, percentage, avgCompletions }) => (
+        <div key={day} className="text-center p-3 bg-background rounded-xl">
+          <div className="text-sm font-medium text-foreground-muted mb-2">{day}</div>
+          <div className={`text-2xl font-bold mb-1 ${
+            percentage >= 80 ? 'text-accent-success' :
+            percentage >= 60 ? 'text-blue-500' :
+            percentage >= 40 ? 'text-yellow-500' :
+            'text-red-500'
+          }`}>
+            {percentage}%
+          </div>
+          <div className="text-xs text-foreground-muted">
+            ~{avgCompletions}/day
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 export default function AnalyticsPage() {
@@ -456,6 +542,7 @@ export default function AnalyticsPage() {
           <p className="text-foreground-muted">Track your progress and identify patterns</p>
         </div>
         <div className="flex gap-2">
+
           <button
             onClick={exportToCSV}
             className="flex items-center gap-2 px-4 py-2 bg-surface border border-border-subtle rounded-lg hover:border-accent-primary/50 transition"
@@ -922,42 +1009,14 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-          {/* Day of Week Analysis */}
+          {/* Day of Week Analysis - Fixed to use all-time data */}
           <div className="bg-surface rounded-2xl p-6 border border-border-subtle">
             <h2 className="text-xl font-bold mb-6">Success Rate by Day of Week</h2>
-            <div className="grid grid-cols-7 gap-2">
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => {
-                const dayData = heatmapData.filter(d => {
-                  if (!d.date) return false
-                  const date = new Date(d.date + 'T12:00:00')
-                  return date.getDay() === index
-                })
-                const totalDays = dayData.length || 1
-                const activeDays = dayData.filter(d => d.count > 0).length
-                const percentage = Math.round((activeDays / totalDays) * 100)
-                const avgCompletions = dayData.length > 0 
-                  ? (dayData.reduce((sum, d) => sum + d.count, 0) / dayData.length).toFixed(1)
-                  : '0'
-                
-                return (
-                  <div key={day} className="text-center p-3 bg-background rounded-xl">
-                    <div className="text-sm font-medium text-foreground-muted mb-2">{day}</div>
-                    <div className={`text-2xl font-bold mb-1 ${
-                      percentage >= 80 ? 'text-accent-success' :
-                      percentage >= 60 ? 'text-blue-500' :
-                      percentage >= 40 ? 'text-yellow-500' :
-                      'text-red-500'
-                    }`}>
-                      {percentage}%
-                    </div>
-                    <div className="text-xs text-foreground-muted">
-                      ~{avgCompletions}/day
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+            <p className="text-sm text-foreground-muted mb-4">Based on all-time data (independent of time range filter)</p>
+            <DayOfWeekAnalysis />
           </div>
+
+
 
           {/* Insights */}
           <div className="bg-surface rounded-2xl p-6 border border-accent-primary/20">

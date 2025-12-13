@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Lightbulb, Instagram, Zap } from 'lucide-react'
+import { Lightbulb, Camera, Zap } from 'lucide-react'
 
 export default function QuickAddSection() {
   const [projectIdea, setProjectIdea] = useState('')
@@ -87,7 +87,7 @@ export default function QuickAddSection() {
 
         <form onSubmit={addIgHook}>
           <div className="relative">
-            <Instagram size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400" />
+            <Camera size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400" />
             <input
               type="text"
               value={igHook}

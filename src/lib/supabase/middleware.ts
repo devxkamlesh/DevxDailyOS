@@ -32,10 +32,46 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   // Public routes that don't require authentication
-  const publicRoutes = ['/', '/login', '/signup']
+  const publicRoutes = ['/', '/login', '/signup', '/maintenance']
   const isPublicRoute = publicRoutes.some(route => 
     request.nextUrl.pathname === route || request.nextUrl.pathname.startsWith(route)
   )
+
+  // Admin routes protection
+  const isAdminRoute = request.nextUrl.pathname.startsWith('/admin')
+  const allowedAdminEmails = (process.env.ALLOWED_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase())
+  const userEmail = user?.email?.toLowerCase() || ''
+  const isAdmin = allowedAdminEmails.includes(userEmail)
+
+  // Check maintenance mode (skip for admins and public routes)
+  if (!isAdmin && !isPublicRoute && request.nextUrl.pathname !== '/maintenance') {
+    try {
+      const { data: settings } = await supabase
+        .from('system_settings')
+        .select('maintenance_mode')
+        .single()
+      
+      if (settings?.maintenance_mode) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/maintenance'
+        return NextResponse.redirect(url)
+      }
+    } catch (e) {
+      // If settings table doesn't exist, continue normally
+    }
+  }
+
+  if (isAdminRoute) {
+    // Must be logged in - redirect to login if not authenticated
+    if (!user) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      return NextResponse.redirect(url)
+    }
+    
+    // Let the admin layout handle authorization check and show access denied page
+    // No redirect needed here - the layout will handle unauthorized users
+  }
 
   // Redirect to login if not authenticated and trying to access protected route
   if (!user && !isPublicRoute) {

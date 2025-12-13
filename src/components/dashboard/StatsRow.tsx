@@ -32,7 +32,7 @@ export default function StatsRow() {
         
         // Fetch habits and today's logs
         const [habitsRes, logsRes] = await Promise.all([
-          supabase.from('habits').select('id, type, target_value').eq('user_id', user.id).eq('is_active', true),
+          supabase.from('habits').select('id, type, target_value, target_unit').eq('user_id', user.id).eq('is_active', true),
           supabase.from('habit_logs').select('habit_id, completed, value').eq('user_id', user.id).eq('date', today)
         ])
 
@@ -90,17 +90,21 @@ export default function StatsRow() {
           }
         }
 
-        // Deep work (sum of numeric habit values with 'min' unit for today)
-        const deepWorkLog = logs.find(l => {
-          const habit = habits.find(h => h.id === l.habit_id)
-          return habit?.type === 'numeric'
+        // Deep work - sum only time-based habit values (where target_unit is 'minutes')
+        let deepWorkMinutes = 0
+        logs.forEach(log => {
+          const habit = habits.find(h => h.id === log.habit_id)
+          if (habit?.type === 'numeric' && habit?.target_unit === 'minutes' && log.value) {
+            // Add the logged value (in minutes)
+            deepWorkMinutes += log.value
+          }
         })
 
         if (mounted) {
           setStats({
             habitsCompleted: completed,
             habitsTotal: habits.length,
-            deepWorkMinutes: deepWorkLog?.value || 0,
+            deepWorkMinutes,
             streak
           })
           setLoading(false)

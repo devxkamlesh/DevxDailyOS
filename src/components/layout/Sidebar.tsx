@@ -6,7 +6,7 @@ import {
   LayoutDashboard, 
   Target, 
   FolderKanban, 
-  Instagram, 
+  Camera, 
   Briefcase, 
   Settings,
   Menu,
@@ -19,7 +19,8 @@ import {
   ShoppingCart,
   Medal,
   ChevronDown,
-  ChevronRight
+  Zap,
+  Activity
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
@@ -30,12 +31,14 @@ const navSections = [
       { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { href: '/calendar', label: 'Calendar', icon: Calendar },
       { href: '/analytics', label: 'Analytics', icon: BarChart3 },
+      { href: '/advanced-analytics', label: 'Advanced Analytics', icon: Activity },
     ]
   },
   {
     title: 'Habits & Goals',
     items: [
       { href: '/habits', label: 'Habits', icon: Target },
+      { href: '/focus', label: 'Focus', icon: Zap },
       { href: '/journal', label: 'Journal', icon: BookOpen },
       { href: '/templates', label: 'Templates', icon: Sparkles },
     ]
@@ -52,7 +55,7 @@ const navSections = [
     title: 'Work & Projects',
     items: [
       { href: '/projects', label: 'Projects', icon: FolderKanban },
-      { href: '/instagram', label: 'Instagram', icon: Instagram },
+      { href: '/instagram', label: 'Instagram', icon: Camera },
       { href: '/freelance', label: 'Freelance', icon: Briefcase },
     ]
   },

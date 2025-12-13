@@ -32,6 +32,37 @@ interface NotificationSettings {
   weekly_summary: boolean
 }
 
+// Icon display names mapping
+const iconDisplayNames: Record<string, string> = {
+  user: 'Default User',
+  crown: 'Crown',
+  star: 'Star',
+  rocket: 'Rocket',
+  flame: 'Flame',
+  gem: 'Diamond',
+  trophy: 'Trophy',
+  zap: 'Lightning',
+  heart: 'Heart',
+  shield: 'Shield',
+  target: 'Target',
+  coffee: 'Coffee',
+  music: 'Music',
+  'gamepad-2': 'Gamepad',
+  code: 'Code',
+  brain: 'Brain',
+  // Golden premium avatars
+  'gold-crown': 'Golden Crown',
+  'gold-star': 'Golden Star',
+  'gold-trophy': 'Golden Trophy',
+  'gold-gem': 'Golden Diamond',
+  'gold-flame': 'Golden Flame',
+  'gold-shield': 'Golden Shield'
+}
+
+const getIconDisplayName = (iconId: string): string => {
+  return iconDisplayNames[iconId] || iconId
+}
+
 export default function SettingsPage() {
   const [profile, setProfile] = useState<Profile>({
     id: '', username: '', full_name: '', avatar_url: null, profile_icon: null,
@@ -375,7 +406,7 @@ export default function SettingsPage() {
                 <ProfileIcon iconId={rewards.current_avatar} size={40} className="text-accent-primary" />
               </div>
               <div>
-                <p className="font-medium mb-1">Current Icon: {rewards.current_avatar}</p>
+                <p className="font-medium mb-1">Current Icon: {getIconDisplayName(rewards.current_avatar)}</p>
                 <Link href="/shop" className="text-sm text-accent-primary hover:underline flex items-center gap-1">
                   <ShoppingCart size={14} /> Get more icons in Shop
                 </Link>
