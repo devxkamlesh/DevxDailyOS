@@ -111,8 +111,12 @@ export default function PublicProfilePage() {
       <div className="bg-surface p-8 rounded-2xl border border-border-subtle">
         <div className="flex items-start gap-6">
           {/* Avatar */}
-          <div className="w-24 h-24 rounded-full bg-accent-primary/20 flex items-center justify-center flex-shrink-0">
-            <ProfileIcon iconId={profile.current_avatar} size={48} className="text-accent-primary" />
+          <div className={`w-24 h-24 rounded-full flex items-center justify-center flex-shrink-0 ${
+            profile.current_avatar?.startsWith('gold-') ? 'bg-yellow-500/20' : 'bg-accent-primary/20'
+          }`}>
+            <ProfileIcon iconId={profile.current_avatar} size={48} className={
+              profile.current_avatar?.startsWith('gold-') ? '' : 'text-accent-primary'
+            } />
           </div>
 
           {/* Info */}

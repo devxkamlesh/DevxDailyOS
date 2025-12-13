@@ -28,6 +28,7 @@ export const iconMap: Record<string, any> = {
   coffee: Coffee,
   music: Music,
   gamepad: Gamepad2,
+  'gamepad-2': Gamepad2,
   bot: Bot,
   battery: Battery,
   wand: Wand2,
@@ -49,6 +50,15 @@ export const iconMap: Record<string, any> = {
   dog: Dog,
   bird: Bird,
   gift: Gift,
+  code: Laptop,
+  brain: Lightbulb,
+  // Golden Premium Avatars (same icons, golden styling applied via className)
+  'gold-crown': Crown,
+  'gold-star': Star,
+  'gold-trophy': Trophy,
+  'gold-gem': Gem,
+  'gold-flame': Flame,
+  'gold-shield': Shield,
   default: User,
 }
 
@@ -69,7 +79,10 @@ export function ProfileIcon({
   className?: string 
 }) {
   const Icon = getIconComponent(iconId)
-  return <Icon size={size} className={className} />
+  // Apply golden styling for gold- prefixed icons
+  const isGolden = iconId?.startsWith('gold-')
+  const goldenClass = isGolden ? 'text-yellow-500' : ''
+  return <Icon size={size} className={`${className} ${goldenClass}`.trim()} />
 }
 
 // All available icons for selection

@@ -404,8 +404,12 @@ export default function SettingsPage() {
           <div className="bg-surface p-6 rounded-xl border border-border-subtle">
             <h2 className="font-semibold mb-4">Profile Icon</h2>
             <div className="flex items-center gap-6 mb-6">
-              <div className="w-20 h-20 rounded-full bg-accent-primary/20 flex items-center justify-center">
-                <ProfileIcon iconId={rewards.current_avatar} size={40} className="text-accent-primary" />
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center ${
+                rewards.current_avatar?.startsWith('gold-') ? 'bg-yellow-500/20' : 'bg-accent-primary/20'
+              }`}>
+                <ProfileIcon iconId={rewards.current_avatar} size={40} className={
+                  rewards.current_avatar?.startsWith('gold-') ? '' : 'text-accent-primary'
+                } />
               </div>
               <div>
                 <p className="font-medium mb-1">Current Icon: {getIconDisplayName(rewards.current_avatar)}</p>

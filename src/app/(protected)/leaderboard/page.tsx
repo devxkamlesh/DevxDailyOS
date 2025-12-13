@@ -251,8 +251,12 @@ export default function LeaderboardPage() {
               {/* 2nd Place */}
               <div className={`p-6 rounded-xl border-2 text-center ${getRankBg(2)}`}>
                 <div className="text-4xl mb-3">🥈</div>
-                <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gray-400/20 flex items-center justify-center">
-                  <ProfileIcon iconId={filteredLeaderboard[1]?.profile_icon} size={32} className="text-gray-400" />
+                <div className={`w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center ${
+                  filteredLeaderboard[1]?.profile_icon?.startsWith('gold-') ? 'bg-yellow-500/20' : 'bg-gray-400/20'
+                }`}>
+                  <ProfileIcon iconId={filteredLeaderboard[1]?.profile_icon} size={32} className={
+                    filteredLeaderboard[1]?.profile_icon?.startsWith('gold-') ? '' : 'text-gray-400'
+                  } />
                 </div>
                 <div className="font-semibold truncate">{filteredLeaderboard[1]?.username || '-'}</div>
                 <div className="text-sm text-foreground-muted">{filteredLeaderboard[1]?.completions || 0} habits</div>
@@ -264,8 +268,12 @@ export default function LeaderboardPage() {
               {/* 1st Place */}
               <div className={`p-6 rounded-xl border-2 text-center transform scale-105 ${getRankBg(1)}`}>
                 <div className="text-5xl mb-3">👑</div>
-                <div className="w-20 h-20 mx-auto mb-3 rounded-full bg-yellow-500/20 flex items-center justify-center">
-                  <ProfileIcon iconId={filteredLeaderboard[0]?.profile_icon} size={40} className="text-yellow-500" />
+                <div className={`w-20 h-20 mx-auto mb-3 rounded-full flex items-center justify-center ${
+                  filteredLeaderboard[0]?.profile_icon?.startsWith('gold-') ? 'bg-yellow-500/30' : 'bg-yellow-500/20'
+                }`}>
+                  <ProfileIcon iconId={filteredLeaderboard[0]?.profile_icon} size={40} className={
+                    filteredLeaderboard[0]?.profile_icon?.startsWith('gold-') ? '' : 'text-yellow-500'
+                  } />
                 </div>
                 <div className="font-bold truncate">{filteredLeaderboard[0]?.username || '-'}</div>
                 <div className="text-sm text-foreground-muted">{filteredLeaderboard[0]?.completions || 0} habits</div>
@@ -277,8 +285,12 @@ export default function LeaderboardPage() {
               {/* 3rd Place */}
               <div className={`p-6 rounded-xl border-2 text-center ${getRankBg(3)}`}>
                 <div className="text-4xl mb-3">🥉</div>
-                <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-orange-500/20 flex items-center justify-center">
-                  <ProfileIcon iconId={filteredLeaderboard[2]?.profile_icon} size={32} className="text-orange-500" />
+                <div className={`w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center ${
+                  filteredLeaderboard[2]?.profile_icon?.startsWith('gold-') ? 'bg-yellow-500/20' : 'bg-orange-500/20'
+                }`}>
+                  <ProfileIcon iconId={filteredLeaderboard[2]?.profile_icon} size={32} className={
+                    filteredLeaderboard[2]?.profile_icon?.startsWith('gold-') ? '' : 'text-orange-500'
+                  } />
                 </div>
                 <div className="font-semibold truncate">{filteredLeaderboard[2]?.username || '-'}</div>
                 <div className="text-sm text-foreground-muted">{filteredLeaderboard[2]?.completions || 0} habits</div>
@@ -314,8 +326,12 @@ export default function LeaderboardPage() {
                      <span className="text-foreground-muted font-bold">{entry.rank}</span>}
                   </div>
                   <div className="col-span-5 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-accent-primary/20 flex items-center justify-center">
-                      <ProfileIcon iconId={entry.profile_icon} size={20} className="text-accent-primary" />
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      entry.profile_icon?.startsWith('gold-') ? 'bg-yellow-500/20' : 'bg-accent-primary/20'
+                    }`}>
+                      <ProfileIcon iconId={entry.profile_icon} size={20} className={
+                        entry.profile_icon?.startsWith('gold-') ? '' : 'text-accent-primary'
+                      } />
                     </div>
                     <div>
                       <Link 
