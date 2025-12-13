@@ -153,7 +153,7 @@ export default function Home() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border-subtle">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 group">
-            <Image src="/Logo/logo.png" alt="Sadhana" width={36} height={36} className="rounded-xl group-hover:scale-105 transition-transform" />
+            <Image src="/Logo/logo.svg" alt="Sadhana" width={36} height={36} className="rounded-xl group-hover:animate-pulse transition-transform" />
             <div className="flex flex-col">
               <span className="font-bold text-lg leading-tight">Sadhana</span>
               {lang === 'hi' && <span className="text-[10px] text-foreground-muted leading-tight">साधना</span>}
@@ -534,7 +534,7 @@ export default function Home() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
             <div className="col-span-2 md:col-span-1">
               <Link href="/" className="flex items-center gap-2 mb-4">
-                <Image src="/Logo/logo.png" alt="Sadhana" width={36} height={36} className="rounded-xl" />
+                <Image src="/Logo/logo.svg" alt="Sadhana" width={36} height={36} className="rounded-xl" />
                 <div className="flex flex-col">
                   <span className="font-bold text-lg leading-tight">Sadhana</span>
                   {lang === 'hi' && <span className="text-[10px] text-foreground-muted leading-tight">साधना</span>}

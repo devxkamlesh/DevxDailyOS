@@ -115,11 +115,11 @@ export default function Sidebar() {
         <div className="p-6">
           <Link href="/" className="flex items-center gap-2 group">
             <Image 
-              src="/Logo/logo.png" 
+              src="/Logo/logo.svg" 
               alt="Sadhana" 
               width={36} 
               height={36} 
-              className="rounded-xl group-hover:scale-105 transition-transform" 
+              className="rounded-xl group-hover:animate-pulse transition-transform" 
             />
             <div className="flex flex-col">
               <h1 className="text-lg font-bold leading-tight">Sadhana</h1>

@@ -5,6 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://sadhana.app"),
   title: "Sadhana — साधना | Daily Practice for Developers & Creators",
   description: "A gamified productivity OS for developers, creators, and freelancers. Build habits, ship projects, and level up your daily practice. Made in India 🇮🇳",
   keywords: ["habit tracker", "productivity", "gamification", "developers", "freelancers", "project management", "sadhana", "daily practice", "India"],
