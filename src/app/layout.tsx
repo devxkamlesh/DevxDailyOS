@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     description: "A gamified productivity OS for developers, creators, and freelancers. Transform your daily routine into a journey of growth.",
     images: [
       {
-        url: "/Logo/logo.png",
+        url: "/Logo/logo.svg",
         width: 512,
         height: 512,
         alt: "Sadhana Logo",
@@ -33,11 +33,11 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Sadhana — साधना | Daily Practice for Developers",
     description: "Build habits, ship projects, and level up. A gamified productivity OS made in India.",
-    images: ["/Logo/logo.png"],
+    images: ["/Logo/logo.svg"],
   },
   icons: {
-    icon: "/Logo/logo.png",
-    apple: "/Logo/logo.png",
+    icon: "/Logo/logo.svg",
+    apple: "/Logo/logo.svg",
   },
   manifest: "/manifest.json",
 };
