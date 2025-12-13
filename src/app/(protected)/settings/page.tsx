@@ -162,6 +162,7 @@ export default function SettingsPage() {
           weekly_summary: notifData.weekly_summary ?? true
         })
       }
+
     } catch (error) {
       console.error('Error:', error)
     } finally {

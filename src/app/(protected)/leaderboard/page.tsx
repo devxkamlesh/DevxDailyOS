@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/Toast'
 import { Trophy, Medal, Crown, Flame, Share2, Users, Calendar, Zap, Search, TrendingUp, Lock } from 'lucide-react'
 import { ProfileIcon } from '@/lib/profile-icons'
+import { BadgeDisplay } from '@/lib/badges'
 import Link from 'next/link'
 import { useSystemSettings } from '@/lib/useSystemSettings'
 
@@ -20,6 +21,7 @@ interface LeaderboardEntry {
   level: number
   rank: number
   isCurrentUser: boolean
+  primary_badge: { id: string; name: string; icon: string; color: string } | null
 }
 
 export default function LeaderboardPage() {
@@ -109,7 +111,8 @@ export default function LeaderboardPage() {
           xp: profile.xp || 0,
           level: profile.level || 1,
           rank: 0,
-          isCurrentUser: profile.id === user.id
+          isCurrentUser: profile.id === user.id,
+          primary_badge: profile.primary_badge || null
         }
       })
       .sort((a, b) => b.completions - a.completions || b.xp - a.xp)
@@ -334,12 +337,17 @@ export default function LeaderboardPage() {
                       } />
                     </div>
                     <div>
-                      <Link 
-                        href={`/profile/${entry.user_id}`}
-                        className="font-medium hover:text-accent-primary transition"
-                      >
-                        {entry.username}
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        <Link 
+                          href={`/profile/${entry.username}`}
+                          className="font-medium hover:text-accent-primary transition"
+                        >
+                          {entry.username}
+                        </Link>
+                        {entry.primary_badge && (
+                          <BadgeDisplay badge={entry.primary_badge} size="sm" showName={false} />
+                        )}
+                      </div>
                       {entry.isCurrentUser && <span className="text-xs text-accent-primary ml-2">You</span>}
                     </div>
                   </div>

@@ -6,7 +6,7 @@ import {
   Users, Activity, TrendingUp, Clock, Target, Zap, 
   Calendar, BarChart3, Eye, Search, Filter, Download,
   ChevronDown, ChevronRight, AlertCircle, CheckCircle,
-  XCircle, Minus, Plus, ArrowUp, ArrowDown
+  XCircle, Minus, Plus, ArrowUp, ArrowDown, Trophy
 } from 'lucide-react'
 import {
   AreaChart,
@@ -83,6 +83,10 @@ export default function UserTrackingPage() {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null)
+  const [timelineUser, setTimelineUser] = useState<UserData | null>(null)
+  const [timelineData, setTimelineData] = useState<any[]>([])
+  const [timelineLoading, setTimelineLoading] = useState(false)
+  const [timelineStats, setTimelineStats] = useState<{ level: number; xp: number; streak: number; habits: number; completionRate: number; completions: number } | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [sortBy, setSortBy] = useState<string>('created_at')
@@ -370,6 +374,168 @@ export default function UserTrackingPage() {
     }
   }
 
+  const openAdvancedTracker = async (user: UserData) => {
+    setTimelineUser(user)
+    setTimelineLoading(true)
+    setTimelineStats(null)
+    
+    try {
+      // Fetch comprehensive timeline data
+      const [logsRes, habitsRes, rewardsRes, focusRes, purchasesRes] = await Promise.all([
+        supabase.from('habit_logs').select('*').eq('user_id', user.id).order('date', { ascending: false }).limit(100),
+        supabase.from('habits').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('user_rewards').select('*').eq('user_id', user.id).single(),
+        supabase.from('focus_sessions').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50),
+        supabase.from('payment_transactions').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20)
+      ])
+
+      // Set fresh stats from database
+      const rewards = rewardsRes.data
+      const totalHabits = habitsRes.data?.length || 0
+      const completedLogs = logsRes.data?.filter(l => l.completed).length || 0
+      
+      // Completion rate = completed logs / total habits (e.g., 5/11 = 45%)
+      const completionRate = totalHabits > 0 ? Math.round((completedLogs / totalHabits) * 100) : 0
+      
+      setTimelineStats({
+        level: rewards?.level || 1,
+        xp: rewards?.xp || 0,
+        streak: rewards?.current_streak || 0,
+        habits: totalHabits,
+        completionRate: completionRate,
+        completions: completedLogs
+      })
+
+      const events: any[] = []
+
+      // Account creation
+      events.push({
+        type: 'account',
+        icon: 'user',
+        title: 'Account Created',
+        description: 'User joined Sadhana',
+        date: user.created_at,
+        color: 'blue'
+      })
+
+      // Habits created
+      habitsRes.data?.forEach(habit => {
+        events.push({
+          type: 'habit',
+          icon: 'target',
+          title: `Created Habit: ${habit.name}`,
+          description: `Category: ${habit.category || 'General'}`,
+          date: habit.created_at,
+          color: 'green'
+        })
+      })
+
+      // Focus sessions
+      focusRes.data?.forEach(session => {
+        events.push({
+          type: 'focus',
+          icon: 'zap',
+          title: `Focus Session: ${session.duration || 0} min`,
+          description: session.notes || 'Completed focus session',
+          date: session.created_at,
+          color: 'purple'
+        })
+      })
+
+      // Purchases
+      purchasesRes.data?.forEach(purchase => {
+        if (purchase.status === 'completed') {
+          events.push({
+            type: 'purchase',
+            icon: 'coins',
+            title: `Purchase: ₹${(purchase.amount / 100).toFixed(0)}`,
+            description: purchase.description || 'Coin package purchase',
+            date: purchase.created_at,
+            color: 'yellow'
+          })
+        }
+      })
+
+      // Habit completions (group by date, show recent ones)
+      const completionsByDate: Record<string, number> = {}
+      logsRes.data?.forEach(log => {
+        if (log.completed) {
+          const date = log.date
+          completionsByDate[date] = (completionsByDate[date] || 0) + 1
+        }
+      })
+      
+      // Add completion events for days with completions
+      Object.entries(completionsByDate).slice(0, 30).forEach(([date, count]) => {
+        events.push({
+          type: 'completion',
+          icon: 'check',
+          title: `Completed ${count} habit${count > 1 ? 's' : ''}`,
+          description: `Daily progress on ${new Date(date).toLocaleDateString('en-IN', { weekday: 'long' })}`,
+          date: new Date(date).toISOString(),
+          color: 'green'
+        })
+      })
+
+      // Current level info (not as timeline event, just info)
+      if (rewards && rewards.level > 1) {
+        events.push({
+          type: 'level',
+          icon: 'trophy',
+          title: `Current Level: ${rewards.level}`,
+          description: `${rewards.xp || 0} XP earned • ${rewards.coins || 0} coins`,
+          date: new Date().toISOString(),
+          color: 'orange'
+        })
+      }
+
+      // Current streak info
+      if (rewards && rewards.current_streak > 0) {
+        events.push({
+          type: 'streak',
+          icon: 'flame',
+          title: `${rewards.current_streak}-Day Streak Active! 🔥`,
+          description: `Longest streak: ${rewards.longest_streak || 0} days`,
+          date: new Date().toISOString(),
+          color: 'orange'
+        })
+      }
+
+      // Sort by date descending
+      events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      
+      setTimelineData(events)
+    } catch (error) {
+      console.error('Error fetching timeline:', error)
+    } finally {
+      setTimelineLoading(false)
+    }
+  }
+
+  const getTimelineIcon = (type: string) => {
+    switch (type) {
+      case 'account': return <Users size={16} />
+      case 'habit': return <Target size={16} />
+      case 'focus': return <Zap size={16} />
+      case 'purchase': return <TrendingUp size={16} />
+      case 'level': return <Trophy size={16} />
+      case 'streak': return <Activity size={16} />
+      case 'completion': return <CheckCircle size={16} />
+      default: return <CheckCircle size={16} />
+    }
+  }
+
+  const getTimelineColor = (color: string) => {
+    switch (color) {
+      case 'blue': return 'bg-blue-500/20 text-blue-400 border-blue-500/50'
+      case 'green': return 'bg-green-500/20 text-green-400 border-green-500/50'
+      case 'purple': return 'bg-purple-500/20 text-purple-400 border-purple-500/50'
+      case 'yellow': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50'
+      case 'orange': return 'bg-orange-500/20 text-orange-400 border-orange-500/50'
+      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/50'
+    }
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -581,13 +747,22 @@ export default function UserTrackingPage() {
                     </span>
                   </td>
                   <td className="p-4">
-                    <button
-                      onClick={() => setSelectedUser(user)}
-                      className="flex items-center gap-1 px-3 py-1 bg-accent-primary/20 text-accent-primary rounded-lg hover:bg-accent-primary/30 transition text-sm"
-                    >
-                      <Eye size={14} />
-                      View Details
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setSelectedUser(user)}
+                        className="flex items-center gap-1 px-3 py-1 bg-accent-primary/20 text-accent-primary rounded-lg hover:bg-accent-primary/30 transition text-sm"
+                      >
+                        <Eye size={14} />
+                        Details
+                      </button>
+                      <button
+                        onClick={() => openAdvancedTracker(user)}
+                        className="flex items-center gap-1 px-3 py-1 bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500/30 transition text-sm"
+                      >
+                        <BarChart3 size={14} />
+                        Timeline
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -684,6 +859,108 @@ export default function UserTrackingPage() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Advanced Timeline Modal */}
+      {timelineUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-surface rounded-2xl border border-border-subtle max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="p-6 border-b border-border-subtle flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold flex items-center gap-2">
+                    <BarChart3 className="text-purple-400" />
+                    User Journey Timeline
+                  </h2>
+                  <p className="text-foreground-muted">@{timelineUser.username} • {timelineUser.full_name}</p>
+                </div>
+                <button
+                  onClick={() => setTimelineUser(null)}
+                  className="p-2 hover:bg-background rounded-lg transition"
+                >
+                  <XCircle size={20} />
+                </button>
+              </div>
+              
+              {/* Quick Stats */}
+              <div className="grid grid-cols-6 gap-2 mt-4">
+                <div className="bg-background p-2.5 rounded-lg text-center">
+                  <div className="text-base font-bold text-purple-400">Lv.{timelineStats?.level || '...'}</div>
+                  <div className="text-[10px] text-foreground-muted">Level</div>
+                </div>
+                <div className="bg-background p-2.5 rounded-lg text-center">
+                  <div className="text-base font-bold text-blue-400">{timelineStats?.xp?.toLocaleString() || '...'}</div>
+                  <div className="text-[10px] text-foreground-muted">XP</div>
+                </div>
+                <div className="bg-background p-2.5 rounded-lg text-center">
+                  <div className="text-base font-bold text-orange-400">{timelineStats?.streak || 0}🔥</div>
+                  <div className="text-[10px] text-foreground-muted">Streak</div>
+                </div>
+                <div className="bg-background p-2.5 rounded-lg text-center">
+                  <div className="text-base font-bold text-cyan-400">{timelineStats?.habits || 0}</div>
+                  <div className="text-[10px] text-foreground-muted">Habits</div>
+                </div>
+                <div className="bg-background p-2.5 rounded-lg text-center">
+                  <div className="text-base font-bold text-green-400">{timelineStats?.completions || 0}</div>
+                  <div className="text-[10px] text-foreground-muted">Done</div>
+                </div>
+                <div className="bg-background p-2.5 rounded-lg text-center">
+                  <div className="text-base font-bold text-yellow-400">{timelineStats?.completionRate || 0}%</div>
+                  <div className="text-[10px] text-foreground-muted">Rate</div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Timeline Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {timelineLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-primary"></div>
+                </div>
+              ) : timelineData.length === 0 ? (
+                <div className="text-center py-12 text-foreground-muted">
+                  <Activity size={48} className="mx-auto mb-4 opacity-50" />
+                  <p>No activity data available</p>
+                </div>
+              ) : (
+                <div className="relative">
+                  {/* Timeline Line */}
+                  <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-border-subtle" />
+                  
+                  {/* Timeline Events */}
+                  <div className="space-y-4">
+                    {timelineData.map((event, index) => (
+                      <div key={index} className="relative flex gap-4">
+                        {/* Icon */}
+                        <div className={`relative z-10 w-10 h-10 rounded-full flex items-center justify-center border-2 ${getTimelineColor(event.color)}`}>
+                          {getTimelineIcon(event.type)}
+                        </div>
+                        
+                        {/* Content */}
+                        <div className="flex-1 bg-background rounded-xl p-4 border border-border-subtle">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <h4 className="font-medium">{event.title}</h4>
+                              <p className="text-sm text-foreground-muted">{event.description}</p>
+                            </div>
+                            <span className="text-xs text-foreground-muted whitespace-nowrap">
+                              {new Date(event.date).toLocaleDateString('en-IN', { 
+                                day: 'numeric', 
+                                month: 'short',
+                                year: new Date(event.date).getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

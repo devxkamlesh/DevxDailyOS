@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ProfileIcon } from '@/lib/profile-icons'
+import { BadgeDisplay, UserBadge } from '@/lib/badges'
 import { User, Calendar, Trophy, Flame, Zap, TrendingUp, Globe, Award, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
@@ -22,36 +23,66 @@ interface PublicProfile {
   total_active_days: number
   achievement_count: number
   created_at: string
+  primary_badge: { id: string; name: string; icon: string; color: string } | null
 }
 
 export default function PublicProfilePage() {
   const params = useParams()
-  const userId = params.id as string
+  const slug = params.slug as string // Can be username or UUID
   const [profile, setProfile] = useState<PublicProfile | null>(null)
+  const [badges, setBadges] = useState<UserBadge[]>([])
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
   useEffect(() => {
     fetchPublicProfile()
-  }, [userId])
+  }, [slug])
 
   const fetchPublicProfile = async () => {
     try {
       const supabase = createClient()
       
-      // Fetch from public_profiles view
-      const { data, error } = await supabase
+      // Try to find by username first (priority 0), then by UUID (priority 1)
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug)
+      
+      let query = supabase
         .from('public_profiles')
         .select('*')
-        .eq('id', userId)
         .eq('is_public', true)
         .eq('show_on_leaderboard', true)
-        .single()
+      
+      if (isUUID) {
+        query = query.eq('id', slug)
+      } else {
+        query = query.ilike('username', slug)
+      }
+      
+      const { data, error } = await query.single()
 
       if (error || !data) {
         setNotFound(true)
-      } else {
-        setProfile(data as PublicProfile)
+        setLoading(false)
+        return
+      }
+      
+      setProfile(data as PublicProfile)
+      
+      // Fetch user badges
+      const { data: userBadges } = await supabase
+        .from('user_badges')
+        .select(`
+          id, badge_id, is_primary, acquired_at, expires_at,
+          badge:badges(id, name, description, icon, color, badge_type, price_inr)
+        `)
+        .eq('user_id', data.id)
+        .or('expires_at.is.null,expires_at.gt.now()')
+        .order('is_primary', { ascending: false })
+      
+      if (userBadges) {
+        setBadges(userBadges.map((ub: any) => ({
+          ...ub,
+          badge: ub.badge
+        })))
       }
     } catch (error) {
       console.error('Error fetching profile:', error)
@@ -82,7 +113,7 @@ export default function PublicProfilePage() {
         <div className="text-6xl mb-4">🔒</div>
         <h1 className="text-2xl font-bold mb-2">Profile Not Found</h1>
         <p className="text-foreground-muted mb-6">
-          This profile is private or doesn't exist
+          This profile is private or doesn&apos;t exist
         </p>
         <Link href="/leaderboard" className="text-accent-primary hover:underline">
           ← Back to Leaderboard
@@ -121,12 +152,25 @@ export default function PublicProfilePage() {
 
           {/* Info */}
           <div className="flex-1">
-            <h1 className="text-3xl font-bold mb-1">
-              @{profile.username || 'user'}
-            </h1>
+            <div className="flex items-center gap-3 mb-1">
+              <h1 className="text-3xl font-bold">@{profile.username || 'user'}</h1>
+              {profile.primary_badge && (
+                <BadgeDisplay badge={profile.primary_badge} size="md" />
+              )}
+            </div>
             {profile.full_name && profile.full_name !== profile.username && (
-              <p className="text-lg text-foreground-muted mb-3">{profile.full_name}</p>
+              <p className="text-lg text-foreground-muted mb-2">{profile.full_name}</p>
             )}
+            
+            {/* All badges */}
+            {badges.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {badges.map(ub => (
+                  <BadgeDisplay key={ub.id} badge={ub.badge} size="sm" />
+                ))}
+              </div>
+            )}
+            
             {profile.bio && (
               <p className="text-foreground-muted mb-4">{profile.bio}</p>
             )}
@@ -188,9 +232,9 @@ export default function PublicProfilePage() {
             <div className="p-2 bg-yellow-500/10 rounded-lg">
               <Award size={20} className="text-yellow-500" />
             </div>
-            <div className="text-sm text-foreground-muted">Achievements</div>
+            <div className="text-sm text-foreground-muted">Badges</div>
           </div>
-          <div className="text-3xl font-bold text-yellow-500">{profile.achievement_count}</div>
+          <div className="text-3xl font-bold text-yellow-500">{badges.length}</div>
         </div>
       </div>
 
