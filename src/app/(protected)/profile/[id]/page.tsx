@@ -117,8 +117,10 @@ export default function PublicProfilePage() {
 
           {/* Info */}
           <div className="flex-1">
-            <h1 className="text-3xl font-bold mb-2">{profile.username}</h1>
-            {profile.full_name && (
+            <h1 className="text-3xl font-bold mb-1">
+              @{profile.username || 'user'}
+            </h1>
+            {profile.full_name && profile.full_name !== profile.username && (
               <p className="text-lg text-foreground-muted mb-3">{profile.full_name}</p>
             )}
             {profile.bio && (

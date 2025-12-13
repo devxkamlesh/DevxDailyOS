@@ -1230,7 +1230,7 @@ INSERT INTO shop_plans (name, description, plan_type, coin_price, icon, is_activ
   ('Code', 'Developer avatar', 'avatar', 250, 'code', true),
   ('Brain', 'Smart thinker avatar', 'avatar', 300, 'brain', true),
   -- Premium Golden Avatars (double price)
-  ('Golden Crown', 'Premium royal crown', 'avatar', 200, 'gold-crown', true),
+  ('Golden Crown', 'Premium royal crown', 'avatar', 1200, 'gold-crown', true),
   ('Golden Star', 'Premium shining star', 'avatar', 300, 'gold-star', true),
   ('Golden Trophy', 'Premium champion', 'avatar', 600, 'gold-trophy', true),
   ('Golden Diamond', 'Ultimate premium', 'avatar', 1000, 'gold-gem', true),
