@@ -7,13 +7,14 @@ import {
   LayoutDashboard, Users, BarChart3, Trophy, ShoppingBag, 
   Settings, ChevronLeft, ChevronRight, Shield, Bell,
   Target, Ticket, Coins, Zap, Menu, X, IndianRupee, Activity,
-  CreditCard
+  CreditCard, Mail
 } from 'lucide-react'
 
 const adminNavItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/user-tracking', label: 'User Tracking', icon: Activity },
+  { href: '/admin/contacts', label: 'Contact Messages', icon: Mail },
   { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/admin/habits', label: 'Habits Data', icon: Target },
   { href: '/admin/challenges', label: 'Challenges', icon: Trophy },

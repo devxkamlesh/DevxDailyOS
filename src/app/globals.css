@@ -5,10 +5,10 @@
   --background: #000000;
   --surface: #111111;
   --foreground: #ffffff;
-  --foreground-muted: #888888;
+  --foreground-muted: #a1a1aa;
   --accent-primary: #3b82f6;
   --accent-success: #22c55e;
-  --border-subtle: #222222;
+  --border-subtle: #27272a;
 }
 
 @theme inline {

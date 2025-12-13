@@ -275,7 +275,7 @@ export default function Home() {
                   <Icon size={24} className="mx-auto mb-3 text-accent-primary group-hover:scale-110 transition-transform" />
                   <div className="text-3xl md:text-4xl font-bold mb-1">{stat.value}</div>
                   <div className="text-foreground-muted text-sm">{stat.label}</div>
-                  {stat.sublabel && <div className="text-orange-400/60 text-xs mt-1">{stat.sublabel}</div>}
+                  {stat.sublabel && <div className="text-orange-400 text-xs mt-1">{stat.sublabel}</div>}
                 </div>
               )
             })}
@@ -306,7 +306,7 @@ export default function Home() {
                   </div>
                   <div className="flex items-baseline gap-2 mb-2">
                     <h3 className="text-xl font-semibold">{feature.title}</h3>
-                    {feature.subtitle && <span className="text-orange-400/60 text-sm">{feature.subtitle}</span>}
+                    {feature.subtitle && <span className="text-orange-400 text-sm">{feature.subtitle}</span>}
                   </div>
                   <p className="text-foreground-muted leading-relaxed">{feature.description}</p>
                 </div>
@@ -387,7 +387,7 @@ export default function Home() {
                 <div className="bg-gradient-to-r from-orange-500/10 to-yellow-500/10 border border-orange-500/20 rounded-xl p-4 flex items-center gap-3">
                   <div className="text-3xl">🏅</div>
                   <div>
-                    <div className="font-semibold text-orange-400">Week Warrior {lang === 'hi' && <span className="text-xs opacity-60">• योद्धा</span>}</div>
+                    <div className="font-semibold text-orange-400">Week Warrior {lang === 'hi' && <span className="text-xs">• योद्धा</span>}</div>
                     <div className="text-foreground-muted text-sm">Complete all habits for 7 days</div>
                   </div>
                 </div>
@@ -415,12 +415,12 @@ export default function Home() {
                 <div key={i} className="relative group">
                   {i < 2 && <div className="hidden md:block absolute top-12 left-full w-full h-px bg-gradient-to-r from-border-subtle to-transparent z-0" />}
                   <div className="relative bg-surface border border-border-subtle rounded-2xl p-8 text-center hover:scale-[1.02] transition-transform">
-                    <div className="text-5xl font-bold text-orange-400/20 mb-4">{item.step}</div>
+                    <div className="text-5xl font-bold text-orange-400/30 mb-4">{item.step}</div>
                     <div className="w-14 h-14 bg-accent-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
                       <Icon size={28} className="text-accent-primary" />
                     </div>
                     <h3 className="text-xl font-semibold mb-1">{item.title}</h3>
-                    {item.subtitle && <p className="text-orange-400/60 text-sm mb-2">{item.subtitle}</p>}
+                    {item.subtitle && <p className="text-orange-400 text-sm mb-2">{item.subtitle}</p>}
                     <p className="text-foreground-muted">{item.description}</p>
                   </div>
                 </div>
@@ -516,7 +516,7 @@ export default function Home() {
           <div className="relative overflow-hidden bg-gradient-to-br from-accent-primary via-purple-600 to-orange-500 rounded-3xl p-12 md:p-16 text-center group hover:scale-[1.01] transition-transform">
             <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[size:32px_32px]" />
             <div className="relative">
-              {t.finalCtaQuote && <p className="text-white/60 text-lg mb-2">{t.finalCtaQuote}</p>}
+              {t.finalCtaQuote && <p className="text-white/80 text-lg mb-2">{t.finalCtaQuote}</p>}
               <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">{t.finalCtaHeadline}</h2>
               <p className="text-white/80 text-lg mb-8 max-w-xl mx-auto">{t.finalCtaSubheadline}</p>
               <Link href="/signup" className="inline-flex items-center gap-2 px-8 py-4 bg-white text-accent-primary rounded-xl font-semibold text-lg hover:bg-white/90 hover:scale-105 transition-all shadow-lg">
