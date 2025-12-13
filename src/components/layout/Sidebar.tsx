@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { 
   LayoutDashboard, 
@@ -12,15 +13,13 @@ import {
   Menu,
   X,
   Calendar,
-  BarChart3,
   Sparkles,
   Trophy,
   BookOpen,
   ShoppingCart,
   Medal,
   ChevronDown,
-  Zap,
-  Activity
+  Zap
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
@@ -30,8 +29,6 @@ const navSections = [
     items: [
       { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { href: '/calendar', label: 'Calendar', icon: Calendar },
-      { href: '/analytics', label: 'Analytics', icon: BarChart3 },
-      { href: '/advanced-analytics', label: 'Advanced Analytics', icon: Activity },
     ]
   },
   {
@@ -116,7 +113,19 @@ export default function Sidebar() {
         md:translate-x-0
       `}>
         <div className="p-6">
-          <h1 className="text-xl font-bold text-accent-primary">DevX Daily OS</h1>
+          <Link href="/" className="flex items-center gap-2 group">
+            <Image 
+              src="/Logo/logo.png" 
+              alt="Sadhana" 
+              width={36} 
+              height={36} 
+              className="rounded-xl group-hover:scale-105 transition-transform" 
+            />
+            <div className="flex flex-col">
+              <h1 className="text-lg font-bold leading-tight">Sadhana</h1>
+              <span className="text-[10px] text-foreground-muted leading-tight">साधना</span>
+            </div>
+          </Link>
         </div>
 
         <nav className="px-3 space-y-2 overflow-y-auto max-h-[calc(100vh-120px)]">

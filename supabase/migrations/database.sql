@@ -80,7 +80,7 @@ CREATE TABLE habit_logs (
   value int,
   note text,
   
-  -- Time Tracking (for Advanced Analytics)
+  -- Time Tracking
   completed_at timestamptz,
   duration_minutes int,
   time_of_day text,
@@ -410,7 +410,7 @@ COMMENT ON FUNCTION update_level_on_xp_change IS 'Automatically recalculate leve
 
 -- Auto-set time_of_day based on completed_at timestamp
 CREATE OR REPLACE FUNCTION set_time_of_day()
-RETURNS TRIGGER AS $
+RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.completed_at IS NOT NULL THEN
     CASE 
@@ -430,7 +430,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 COMMENT ON FUNCTION set_time_of_day IS 'Automatically categorize time of day based on completed_at timestamp';
 
@@ -784,7 +784,7 @@ WHERE trigger_schema = 'public';
 -- SCHEMA VERSION
 -- ============================================
 
-COMMENT ON SCHEMA public IS 'DevX Daily OS Database Schema v1.0 - Created: 2024-12-13';
+COMMENT ON SCHEMA public IS 'Sadhana Database Schema v1.0 - Created: 2024-12-13';
 
 -- ============================================
 -- END OF MASTER SCHEMA
@@ -1083,7 +1083,7 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO service_role;
 -- ============================================
 -- UPDATED SCHEMA VERSION
 -- ============================================
-COMMENT ON SCHEMA public IS 'DevX Daily OS Database Schema v1.1 - Updated: 2024-12-13 - Added payment, shop, time blocks, focus sessions';
+COMMENT ON SCHEMA public IS 'Sadhana Database Schema v1.1 - Updated: 2024-12-13 - Added payment, shop, time blocks, focus sessions';
 
 
 -- ============================================
@@ -1263,7 +1263,7 @@ ON CONFLICT DO NOTHING;
 -- ============================================
 -- UPDATED SCHEMA VERSION
 -- ============================================
-COMMENT ON SCHEMA public IS 'DevX Daily OS Database Schema v1.2 - Updated: 2024-12-13 - Added coupons, coin packages, predefined shop items';
+COMMENT ON SCHEMA public IS 'Sadhana Database Schema v1.2 - Updated: 2024-12-13 - Added coupons, coin packages, predefined shop items';
 
 
 -- ============================================
@@ -1322,7 +1322,7 @@ INSERT INTO system_settings (
 -- ============================================
 -- UPDATED SCHEMA VERSION
 -- ============================================
-COMMENT ON SCHEMA public IS 'DevX Daily OS Database Schema v1.3 - Updated: 2024-12-13 - Added system_settings table';
+COMMENT ON SCHEMA public IS 'Sadhana Database Schema v1.3 - Updated: 2024-12-13 - Added system_settings table';
 
 -- ============================================
 -- CHART DATA ENGINE TABLES
@@ -1335,8 +1335,8 @@ CREATE TABLE IF NOT EXISTS chart_metrics (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   
   -- Time dimension (required)
-  timestamp TIMESTAMPTZ NOT NULL,
-  date DATE GENERATED ALWAYS AS (timestamp::date) STORED,
+  recorded_at TIMESTAMPTZ NOT NULL,
+  date DATE, -- Will be set by trigger
   
   -- Metric identification
   metric TEXT NOT NULL, -- e.g., 'completions', 'revenue', 'users'
@@ -1357,8 +1357,22 @@ CREATE TABLE IF NOT EXISTS chart_metrics (
   updated_at TIMESTAMPTZ DEFAULT now(),
   
   -- Constraints
-  UNIQUE(timestamp, metric, group_key, user_id)
+  UNIQUE(recorded_at, metric, group_key, user_id)
 );
+
+-- Trigger to auto-set date from recorded_at
+CREATE OR REPLACE FUNCTION set_chart_metric_date()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.date := NEW.recorded_at::date;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_chart_metrics_set_date
+  BEFORE INSERT OR UPDATE ON chart_metrics
+  FOR EACH ROW
+  EXECUTE FUNCTION set_chart_metric_date();
 
 -- Chart configurations table
 CREATE TABLE IF NOT EXISTS chart_configurations (
@@ -1466,7 +1480,7 @@ COMMENT ON TABLE habit_time_logs IS 'Detailed time tracking for habit sessions';
 -- ============================================
 
 -- Indexes for chart metrics performance
-CREATE INDEX IF NOT EXISTS idx_chart_metrics_timestamp ON chart_metrics(timestamp);
+CREATE INDEX IF NOT EXISTS idx_chart_metrics_recorded_at ON chart_metrics(recorded_at);
 CREATE INDEX IF NOT EXISTS idx_chart_metrics_date ON chart_metrics(date);
 CREATE INDEX IF NOT EXISTS idx_chart_metrics_metric ON chart_metrics(metric);
 CREATE INDEX IF NOT EXISTS idx_chart_metrics_group ON chart_metrics(group_key);
@@ -1475,7 +1489,7 @@ CREATE INDEX IF NOT EXISTS idx_chart_metrics_category ON chart_metrics(category)
 
 -- Composite indexes for common queries
 CREATE INDEX IF NOT EXISTS idx_chart_metrics_user_date_metric ON chart_metrics(user_id, date, metric);
-CREATE INDEX IF NOT EXISTS idx_chart_metrics_group_timestamp ON chart_metrics(group_key, timestamp);
+CREATE INDEX IF NOT EXISTS idx_chart_metrics_group_recorded_at ON chart_metrics(group_key, recorded_at);
 
 -- Indexes for chart configurations
 CREATE INDEX IF NOT EXISTS idx_chart_configs_chart_id ON chart_configurations(chart_id);
@@ -1594,7 +1608,7 @@ CREATE OR REPLACE FUNCTION get_chart_data(
   p_end_date DATE DEFAULT NULL
 )
 RETURNS TABLE (
-  timestamp TIMESTAMPTZ,
+  recorded_at TIMESTAMPTZ,
   date DATE,
   metric TEXT,
   value NUMERIC,
@@ -1603,7 +1617,7 @@ RETURNS TABLE (
 BEGIN
   RETURN QUERY
   SELECT 
-    cm.timestamp,
+    cm.recorded_at,
     cm.date,
     cm.metric,
     cm.value,
@@ -1615,14 +1629,14 @@ BEGIN
     AND (p_group_key IS NULL OR cm.group_key = p_group_key)
     AND (p_start_date IS NULL OR cm.date >= p_start_date)
     AND (p_end_date IS NULL OR cm.date <= p_end_date)
-  ORDER BY cm.timestamp, cm.metric;
+  ORDER BY cm.recorded_at, cm.metric;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Function to insert/update chart metrics
 CREATE OR REPLACE FUNCTION upsert_chart_metric(
   p_user_id UUID,
-  p_timestamp TIMESTAMPTZ,
+  p_recorded_at TIMESTAMPTZ,
   p_metric TEXT,
   p_value NUMERIC,
   p_group_key TEXT DEFAULT NULL,
@@ -1634,11 +1648,11 @@ DECLARE
   result_id UUID;
 BEGIN
   INSERT INTO chart_metrics (
-    user_id, timestamp, metric, value, group_key, category, meta
+    user_id, recorded_at, metric, value, group_key, category, meta
   ) VALUES (
-    p_user_id, p_timestamp, p_metric, p_value, p_group_key, p_category, p_meta
+    p_user_id, p_recorded_at, p_metric, p_value, p_group_key, p_category, p_meta
   )
-  ON CONFLICT (timestamp, metric, group_key, user_id)
+  ON CONFLICT (recorded_at, metric, group_key, user_id)
   DO UPDATE SET
     value = EXCLUDED.value,
     category = EXCLUDED.category,
@@ -1670,7 +1684,7 @@ CREATE TRIGGER trigger_chart_configurations_updated_at
 -- ============================================
 -- FINAL SCHEMA VERSION UPDATE
 -- ============================================
-COMMENT ON SCHEMA public IS 'DevX Daily OS Database Schema v2.0 - Updated: 2024-12-13 - Added Advanced Analytics, Chart Engine, Social Features, User Tracking';
+COMMENT ON SCHEMA public IS 'Sadhana Database Schema v2.0 - Updated: 2024-12-13 - Added Social Features, User Tracking';
 
 -- ============================================
 -- END OF CONSOLIDATED DATABASE SCHEMA

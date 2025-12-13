@@ -743,6 +743,28 @@ export default function TemplatesPage() {
     }
 
     try {
+      // Ensure profile exists before inserting any data
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .single()
+      
+      if (!existingProfile) {
+        // Create profile if it doesn't exist
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            username: user.email?.split('@')[0] || `user_${user.id.slice(0, 8)}`,
+            full_name: user.user_metadata?.full_name || null,
+            avatar_url: user.user_metadata?.avatar_url || null
+          })
+        if (profileError && profileError.code !== '23505') { // Ignore duplicate key error
+          throw profileError
+        }
+      }
+
       if (template.type === 'habit') {
         // Insert habits with new schema fields
         const habits = template.items.map(item => ({
