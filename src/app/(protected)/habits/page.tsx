@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Habit } from '@/types/database'
-import { Plus, X, Sunrise, Briefcase, Moon, Heart, Target, Edit2, Trash2, Eye, EyeOff, TrendingUp, Calendar, CheckCircle2, BarChart3, Award, Flame, Minus, Zap, Clock, BookOpen, Weight, Dumbbell, Droplets, FileText, Timer, AlertCircle } from 'lucide-react'
+import { Plus, X, Sunrise, Briefcase, Moon, Heart, Target, Edit2, Trash2, Eye, EyeOff, TrendingUp, CheckCircle2, BarChart3, Award, Flame, Zap, Clock, BookOpen, Weight, Dumbbell, Droplets, FileText, Timer } from 'lucide-react'
 import { LucideIcon } from 'lucide-react'
 import { useSystemSettings } from '@/lib/useSystemSettings'
 import { useToast } from '@/components/ui/Toast'
@@ -61,7 +61,6 @@ export default function HabitsPage() {
     min_session_time: 25
   })
   const [saving, setSaving] = useState(false)
-  const [limitError, setLimitError] = useState('')
   const supabase = createClient()
   const router = useRouter()
   const { settings: systemSettings } = useSystemSettings()
@@ -84,112 +83,69 @@ export default function HabitsPage() {
     }
   }, [formData.target_unit, formData.target_value, formData.type])
 
-  const calculateAnalytics = async (habitData: Habit[]) => {
+  const calculateAnalytics = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const now = new Date()
-    const today = now.toISOString().split('T')[0]
-    
-    // Get date ranges
-    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-    const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-    const yearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    try {
+      // Use optimized database function for analytics - eliminates N+1 queries
+      const { data: analyticsData, error } = await supabase.rpc('get_user_habit_analytics', {
+        p_user_id: user.id
+      })
 
-    // Fetch all logs for analytics
-    const { data: allLogs } = await supabase
-      .from('habit_logs')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('date', { ascending: false })
-
-    if (!allLogs) return
-
-    // Calculate weekly stats
-    const weekLogs = allLogs.filter(log => log.date >= weekAgo && log.date <= today)
-    const weekCompleted = weekLogs.filter(log => log.completed).length
-    const weekTotal = habitData.filter(h => h.is_active).length * 7
-    
-    // Calculate monthly stats
-    const monthLogs = allLogs.filter(log => log.date >= monthAgo && log.date <= today)
-    const monthCompleted = monthLogs.filter(log => log.completed).length
-    const monthTotal = habitData.filter(h => h.is_active).length * 30
-    
-    // Calculate yearly stats
-    const yearLogs = allLogs.filter(log => log.date >= yearAgo && log.date <= today)
-    const yearCompleted = yearLogs.filter(log => log.completed).length
-    const yearTotal = habitData.filter(h => h.is_active).length * 365
-
-    // Calculate streaks
-    const sortedDates = [...new Set(allLogs.map(log => log.date))].sort().reverse()
-    let currentStreak = 0
-    let longestStreak = 0
-    let tempStreak = 0
-    
-    for (let i = 0; i < sortedDates.length; i++) {
-      const date = sortedDates[i]
-      const dayLogs = allLogs.filter(log => log.date === date && log.completed)
-      
-      if (dayLogs.length > 0) {
-        tempStreak++
-        if (i === 0) currentStreak = tempStreak
-        longestStreak = Math.max(longestStreak, tempStreak)
-      } else {
-        if (i === 0) currentStreak = 0
-        tempStreak = 0
+      if (error) {
+        console.error('Analytics error:', error)
+        return
       }
-    }
 
-    setAnalytics({
-      weekly: {
-        completed: weekCompleted,
-        total: weekTotal,
-        percentage: weekTotal > 0 ? Math.round((weekCompleted / weekTotal) * 100) : 0
-      },
-      monthly: {
-        completed: monthCompleted,
-        total: monthTotal,
-        percentage: monthTotal > 0 ? Math.round((monthCompleted / monthTotal) * 100) : 0
-      },
-      yearly: {
-        completed: yearCompleted,
-        total: yearTotal,
-        percentage: yearTotal > 0 ? Math.round((yearCompleted / yearTotal) * 100) : 0
-      },
-      currentStreak,
-      longestStreak,
-      totalCompletions: allLogs.filter(log => log.completed).length
-    })
+      if (analyticsData) {
+        setAnalytics({
+          weekly: analyticsData.weekly,
+          monthly: analyticsData.monthly,
+          yearly: analyticsData.yearly,
+          currentStreak: analyticsData.currentStreak,
+          longestStreak: analyticsData.longestStreak,
+          totalCompletions: analyticsData.totalCompletions
+        })
+      }
+    } catch (error) {
+      console.error('Failed to calculate analytics:', error)
+    }
   }
 
   const fetchHabits = async () => {
-    const { data } = await supabase
-      .from('habits')
-      .select('*')
-      .order('created_at')
-    
-    if (!data) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
       setLoading(false)
       return
     }
 
-    // Check today's completion status
-    const today = new Date().toISOString().split('T')[0]
-    const { data: logs } = await supabase
-      .from('habit_logs')
-      .select('habit_id, completed, value')
-      .eq('date', today)
+    try {
+      // Use optimized database function - eliminates N+1 queries by getting habits with completion status in single query
+      const { data: habitsWithStatus, error } = await supabase.rpc('get_user_habits_with_status', {
+        p_user_id: user.id
+      })
 
-    const habitsWithStatus = data.map(habit => {
-      const log = logs?.find(l => l.habit_id === habit.id)
-      const currentValue = log?.value || 0
-      const completedToday = log ? (habit.type === 'boolean' ? log.completed : currentValue >= (habit.target_value || 1)) : false
-      return { ...habit, completedToday, currentValue }
-    })
-    
-    setHabits(habitsWithStatus)
-    await calculateAnalytics(data)
-    setLoading(false)
+      if (error) {
+        console.error('Error fetching habits:', error)
+        setLoading(false)
+        return
+      }
+
+      // Transform the data to match expected format
+      const transformedHabits = habitsWithStatus?.map((habit: any) => ({
+        ...habit,
+        completedToday: habit.completed_today,
+        currentValue: habit.current_value
+      })) || []
+      
+      setHabits(transformedHabits)
+      await calculateAnalytics()
+      setLoading(false)
+    } catch (error) {
+      console.error('Failed to fetch habits:', error)
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -263,7 +219,7 @@ export default function HabitsPage() {
       } else {
         // Check habit limit before creating
         if (systemSettings.max_habits_per_user > 0 && habits.length >= systemSettings.max_habits_per_user) {
-          setLimitError(`You've reached the maximum limit of ${systemSettings.max_habits_per_user} habits`)
+          showToast(`You've reached the maximum limit of ${systemSettings.max_habits_per_user} habits`, 'warning')
           setSaving(false)
           return
         }
@@ -347,7 +303,6 @@ export default function HabitsPage() {
     : habits.filter(h => h.category === activeTab)
 
   const activeHabits = habits.filter(h => h.is_active)
-  const totalStreak = activeHabits.reduce((sum, h) => sum + (h.completedToday ? 1 : 0), 0)
   const avgCompletion = activeHabits.length > 0 
     ? Math.round(activeHabits.filter(h => h.completedToday).length / activeHabits.length * 100)
     : 0
@@ -355,30 +310,58 @@ export default function HabitsPage() {
   const currentAnalytics = analytics[analyticsView === 'week' ? 'weekly' : analyticsView === 'month' ? 'monthly' : 'yearly']
 
   return (
-    <div className="space-y-6">
-      <div>
-        <div className="flex items-center gap-3 mb-2">
-          <h1 className="text-2xl font-bold">Habits</h1>
+    <div className="space-y-8">
+      {/* Header Section */}
+      <div className="bg-gradient-to-br from-accent-primary/10 to-accent-primary/5 rounded-2xl p-6 border border-accent-primary/20">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Daily Habits</h1>
+            <p className="text-foreground-muted">Build consistency, track progress, achieve your goals</p>
+          </div>
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 px-3 py-1.5 bg-accent-primary text-white rounded-lg hover:opacity-90 transition text-sm"
+            className="flex items-center gap-2 px-6 py-3 bg-accent-primary text-white rounded-xl hover:opacity-90 transition font-medium shadow-lg shadow-accent-primary/20"
           >
-            <Plus size={16} />
-            New
+            <Plus size={20} />
+            New Habit
           </button>
         </div>
-        <div className="flex items-center gap-6 text-sm flex-wrap">
-          <div className="flex items-center gap-2">
-            <Target size={16} className="text-accent-primary" />
-            <span className="text-foreground-muted">{activeHabits.length} Active</span>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-surface/50 backdrop-blur-sm p-4 rounded-xl border border-border-subtle">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-accent-primary/20 rounded-lg">
+                <Target size={20} className="text-accent-primary" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{activeHabits.length}</p>
+                <p className="text-sm text-foreground-muted">Active Habits</p>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <TrendingUp size={16} className="text-accent-success" />
-            <span className="text-foreground-muted">{avgCompletion}% Today</span>
+          
+          <div className="bg-surface/50 backdrop-blur-sm p-4 rounded-xl border border-border-subtle">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-accent-success/20 rounded-lg">
+                <TrendingUp size={20} className="text-accent-success" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{avgCompletion}%</p>
+                <p className="text-sm text-foreground-muted">Today's Progress</p>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Flame size={16} className="text-orange-500" />
-            <span className="text-foreground-muted">{analytics.currentStreak} Day Streak</span>
+          
+          <div className="bg-surface/50 backdrop-blur-sm p-4 rounded-xl border border-border-subtle">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-500/20 rounded-lg">
+                <Flame size={20} className="text-orange-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{analytics.currentStreak}</p>
+                <p className="text-sm text-foreground-muted">Day Streak</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -494,115 +477,142 @@ export default function HabitsPage() {
         </div>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        <button
-          onClick={() => setActiveTab('all')}
-          className={`px-4 py-2 rounded-lg whitespace-nowrap transition ${
-            activeTab === 'all' 
-              ? 'bg-accent-primary text-white' 
-              : 'bg-surface text-foreground-muted hover:text-foreground'
-          }`}
-        >
-          All
-        </button>
-        {categories.map(cat => {
-          const Icon = categoryIcons[cat]
-          return (
-            <button
-              key={cat}
-              onClick={() => setActiveTab(cat)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap transition capitalize ${
-                activeTab === cat 
-                  ? 'bg-accent-primary text-white' 
-                  : 'bg-surface text-foreground-muted hover:text-foreground'
-              }`}
-            >
-              <Icon size={16} />
-              {cat}
-            </button>
-          )
-        })}
+      {/* Category Filter */}
+      <div className="bg-surface rounded-2xl p-2 border border-border-subtle">
+        <div className="flex gap-1 overflow-x-auto">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`px-6 py-3 rounded-xl whitespace-nowrap transition font-medium ${
+              activeTab === 'all' 
+                ? 'bg-accent-primary text-white shadow-lg shadow-accent-primary/20' 
+                : 'text-foreground-muted hover:text-foreground hover:bg-background'
+            }`}
+          >
+            All Habits
+          </button>
+          {categories.map(cat => {
+            const Icon = categoryIcons[cat]
+            const categoryCount = habits.filter(h => h.category === cat && h.is_active).length
+            return (
+              <button
+                key={cat}
+                onClick={() => setActiveTab(cat)}
+                className={`flex items-center gap-2 px-6 py-3 rounded-xl whitespace-nowrap transition capitalize font-medium ${
+                  activeTab === cat 
+                    ? 'bg-accent-primary text-white shadow-lg shadow-accent-primary/20' 
+                    : 'text-foreground-muted hover:text-foreground hover:bg-background'
+                }`}
+              >
+                <Icon size={18} />
+                {cat}
+                {categoryCount > 0 && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                    activeTab === cat 
+                      ? 'bg-white/20 text-white' 
+                      : 'bg-accent-primary/10 text-accent-primary'
+                  }`}>
+                    {categoryCount}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="bg-surface p-6 rounded-2xl border border-border-subtle animate-pulse">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-background rounded-xl" />
+              <div className="flex items-center gap-4 mb-5">
+                <div className="w-14 h-14 bg-background rounded-2xl" />
                 <div className="flex-1">
-                  <div className="h-5 bg-background rounded w-32 mb-2" />
-                  <div className="h-3 bg-background rounded w-20" />
+                  <div className="h-5 bg-background rounded-lg w-32 mb-2" />
+                  <div className="h-3 bg-background rounded-lg w-20" />
                 </div>
               </div>
-              <div className="h-4 bg-background rounded w-full mb-2" />
-              <div className="h-4 bg-background rounded w-3/4 mb-4" />
-              <div className="h-12 bg-background rounded-xl w-full" />
+              <div className="h-4 bg-background rounded-lg w-full mb-2" />
+              <div className="h-4 bg-background rounded-lg w-3/4 mb-5" />
+              <div className="h-12 bg-background rounded-xl w-full mb-3" />
+              <div className="h-8 bg-background rounded-lg w-full" />
             </div>
           ))}
         </div>
       ) : filteredHabits.length === 0 ? (
-        <div className="text-center py-12 bg-surface rounded-2xl border border-border-subtle">
-          <Target size={48} className="mx-auto mb-4 text-foreground-muted" />
-          <p className="text-foreground-muted mb-4">No habits in this category</p>
+        <div className="text-center py-16 bg-gradient-to-br from-surface to-background rounded-2xl border border-border-subtle">
+          <div className="p-4 bg-accent-primary/10 rounded-2xl w-fit mx-auto mb-6">
+            <Target size={48} className="text-accent-primary" />
+          </div>
+          <h3 className="text-xl font-semibold mb-2">
+            {activeTab === 'all' ? 'No habits yet' : `No ${activeTab} habits`}
+          </h3>
+          <p className="text-foreground-muted mb-6 max-w-md mx-auto">
+            {activeTab === 'all' 
+              ? 'Start building better habits today. Create your first habit to begin your journey.'
+              : `You haven't created any ${activeTab} habits yet. Add one to get started.`
+            }
+          </p>
           <button
             onClick={() => setShowForm(true)}
-            className="text-accent-primary hover:underline"
+            className="px-6 py-3 bg-accent-primary text-white rounded-xl hover:opacity-90 transition font-medium shadow-lg shadow-accent-primary/20"
           >
-            Create your first habit
+            Create Your First Habit
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredHabits.map(habit => {
             const Icon = categoryIcons[habit.category as keyof typeof categoryIcons]
             return (
               <div 
                 key={habit.id}
-                className={`relative bg-surface p-6 rounded-2xl border transition-all duration-200 group ${
+                className={`relative bg-surface p-6 rounded-2xl border transition-all duration-300 group hover:scale-[1.02] ${
                   habit.completedToday 
-                    ? 'border-accent-success/50 bg-gradient-to-br from-accent-success/10 to-accent-success/5 shadow-lg shadow-accent-success/10' 
-                    : 'border-border-subtle hover:border-accent-primary/50 hover:shadow-lg hover:shadow-accent-primary/5'
-                } ${!habit.is_active ? 'opacity-50' : ''}`}
+                    ? 'border-accent-success/30 bg-gradient-to-br from-accent-success/10 to-accent-success/5 shadow-xl shadow-accent-success/10' 
+                    : 'border-border-subtle hover:border-accent-primary/30 hover:shadow-xl hover:shadow-accent-primary/5'
+                } ${!habit.is_active ? 'opacity-60' : ''}`}
               >
                 {/* Completion Badge */}
                 {habit.completedToday && (
-                  <div className="absolute -top-2 -right-2 bg-accent-success text-white rounded-full p-1.5 shadow-lg">
-                    <CheckCircle2 size={16} />
+                  <div className="absolute -top-3 -right-3 bg-accent-success text-white rounded-full p-2 shadow-lg">
+                    <CheckCircle2 size={18} />
                   </div>
                 )}
 
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-3 rounded-xl transition-colors ${
+                <div className="flex items-start justify-between mb-5">
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className={`p-3 rounded-2xl transition-all duration-300 ${
                       habit.completedToday 
-                        ? 'bg-accent-success/20' 
-                        : 'bg-accent-primary/10 group-hover:bg-accent-primary/20'
+                        ? 'bg-accent-success/20 shadow-lg shadow-accent-success/20' 
+                        : 'bg-accent-primary/10 group-hover:bg-accent-primary/20 group-hover:shadow-lg group-hover:shadow-accent-primary/20'
                     }`}>
-                      {Icon && <Icon size={24} className={habit.completedToday ? 'text-accent-success' : 'text-accent-primary'} />}
+                      {Icon && <Icon size={26} className={habit.completedToday ? 'text-accent-success' : 'text-accent-primary'} />}
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-lg">{habit.name}</h3>
-                      <p className="text-xs text-foreground-muted capitalize flex items-center gap-1">
-                        {habit.category}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-lg mb-1 truncate">{habit.name}</h3>
+                      <div className="flex items-center gap-2 text-xs text-foreground-muted">
+                        <span className="capitalize">{habit.category}</span>
                         {habit.type === 'numeric' && (
-                          <span className="ml-1 px-2 py-0.5 bg-background rounded-full">
-                            {habit.target_value} {habit.target_unit}
-                          </span>
+                          <>
+                            <span>•</span>
+                            <span className="px-2 py-1 bg-background rounded-full font-medium">
+                              {habit.target_value} {habit.target_unit}
+                            </span>
+                          </>
                         )}
-                      </p>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200">
                     <button
                       onClick={() => openEdit(habit)}
-                      className="p-2 text-foreground-muted hover:text-accent-primary hover:bg-background rounded-lg transition"
+                      className="p-2 text-foreground-muted hover:text-accent-primary hover:bg-background rounded-xl transition"
                     >
                       <Edit2 size={16} />
                     </button>
                     <button
                       onClick={() => deleteHabit(habit.id)}
-                      className="p-2 text-foreground-muted hover:text-red-400 hover:bg-background rounded-lg transition"
+                      className="p-2 text-foreground-muted hover:text-red-400 hover:bg-background rounded-xl transition"
                     >
                       <Trash2 size={16} />
                     </button>
@@ -610,28 +620,30 @@ export default function HabitsPage() {
                 </div>
 
                 {habit.description && (
-                  <p className="text-sm text-foreground-muted mb-4 line-clamp-2 leading-relaxed">{habit.description}</p>
+                  <p className="text-sm text-foreground-muted mb-5 line-clamp-2 leading-relaxed">{habit.description}</p>
                 )}
 
                 {/* Progress Display for Numeric Habits */}
                 {habit.type === 'numeric' && (
-                  <div className="mb-3">
+                  <div className="mb-4">
                     <div className="flex items-center justify-between text-sm mb-2">
                       <span className="text-foreground-muted">Progress</span>
                       <span className="font-semibold">
                         {habit.currentValue || 0} / {habit.target_value} {habit.target_unit}
                       </span>
                     </div>
-                    <div className="h-2 bg-background rounded-full overflow-hidden">
+                    <div className="h-3 bg-background rounded-full overflow-hidden">
                       <div 
-                        className="h-full bg-accent-primary transition-all duration-300"
+                        className={`h-full transition-all duration-500 ${
+                          habit.completedToday ? 'bg-accent-success' : 'bg-accent-primary'
+                        }`}
                         style={{ width: `${Math.min(((habit.currentValue || 0) / (habit.target_value || 1)) * 100, 100)}%` }}
                       />
                     </div>
                   </div>
                 )}
 
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {habit.type === 'numeric' ? (
                     <>
                       {/* Time-based habits redirect to Focus page */}
@@ -639,7 +651,7 @@ export default function HabitsPage() {
                         <button
                           onClick={() => router.push(`/focus?habit=${habit.id}`)}
                           disabled={habit.completedToday}
-                          className={`w-full py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                          className={`w-full py-4 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
                             habit.completedToday
                               ? 'bg-accent-success text-white cursor-default shadow-lg shadow-accent-success/20'
                               : 'bg-gradient-to-r from-accent-primary to-blue-500 text-white hover:opacity-90 shadow-lg shadow-accent-primary/20'
@@ -658,91 +670,47 @@ export default function HabitsPage() {
                           )}
                         </button>
                       ) : (
-                        <>
-                          {/* Increment/Decrement Controls for non-time habits */}
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={async () => {
-                                const today = new Date().toISOString().split('T')[0]
-                                const { data: { user } } = await supabase.auth.getUser()
-                                if (!user) return
+                        /* Single action button for non-time numeric habits */
+                        <button
+                          onClick={async () => {
+                            const today = new Date().toISOString().split('T')[0]
+                            const { data: { user } } = await supabase.auth.getUser()
+                            if (!user) return
 
-                                const newValue = Math.max(0, (habit.currentValue || 0) - 1)
-                                const completed = newValue >= (habit.target_value || 1)
+                            // Toggle between completed and not completed
+                            const newCompleted = !habit.completedToday
+                            const newValue = newCompleted ? habit.target_value : 0
 
-                                await supabase.from('habit_logs').upsert({
-                                  user_id: user.id,
-                                  habit_id: habit.id,
-                                  date: today,
-                                  completed,
-                                  value: newValue,
-                                  completed_at: completed ? new Date().toISOString() : null,
-                                  duration_minutes: habit.target_unit === 'minutes' ? newValue : null
-                                }, { onConflict: 'user_id,habit_id,date' })
+                            await supabase.from('habit_logs').upsert({
+                              user_id: user.id,
+                              habit_id: habit.id,
+                              date: today,
+                              completed: newCompleted,
+                              value: newValue,
+                              completed_at: newCompleted ? new Date().toISOString() : null,
+                              duration_minutes: null
+                            }, { onConflict: 'user_id,habit_id,date' })
 
-                                fetchHabits()
-                              }}
-                              disabled={(habit.currentValue || 0) === 0}
-                              className="flex-1 py-3 bg-surface border-2 border-border-subtle rounded-xl hover:border-accent-primary/50 transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium"
-                            >
-                              <Minus size={18} />
-                              -1
-                            </button>
-                            
-                            <button
-                              onClick={async () => {
-                                const today = new Date().toISOString().split('T')[0]
-                                const { data: { user } } = await supabase.auth.getUser()
-                                if (!user) return
-
-                                const newValue = (habit.currentValue || 0) + 1
-                                const completed = newValue >= (habit.target_value || 1)
-
-                                await supabase.from('habit_logs').upsert({
-                                  user_id: user.id,
-                                  habit_id: habit.id,
-                                  date: today,
-                                  completed,
-                                  value: newValue,
-                                  completed_at: completed ? new Date().toISOString() : null,
-                                  duration_minutes: habit.target_unit === 'minutes' ? newValue : null
-                                }, { onConflict: 'user_id,habit_id,date' })
-
-                                fetchHabits()
-                              }}
-                              className="flex-1 py-3 bg-accent-primary text-white rounded-xl hover:opacity-90 transition flex items-center justify-center gap-2 font-medium shadow-lg shadow-accent-primary/20"
-                            >
-                              <Plus size={18} />
-                              +1
-                            </button>
-                          </div>
-
-                          {/* Quick Complete Button for non-time habits only */}
-                          {!habit.completedToday && habit.target_unit !== 'minutes' && (
-                            <button
-                              onClick={async () => {
-                                const today = new Date().toISOString().split('T')[0]
-                                const { data: { user } } = await supabase.auth.getUser()
-                                if (!user) return
-
-                                await supabase.from('habit_logs').upsert({
-                                  user_id: user.id,
-                                  habit_id: habit.id,
-                                  date: today,
-                                  completed: true,
-                                  value: habit.target_value,
-                                  completed_at: new Date().toISOString(),
-                                  duration_minutes: habit.type === 'numeric' && habit.target_unit === 'minutes' ? habit.target_value : null
-                                }, { onConflict: 'user_id,habit_id,date' })
-
-                                fetchHabits()
-                              }}
-                              className="w-full py-2 bg-accent-success/10 text-accent-success rounded-lg hover:bg-accent-success/20 transition text-sm font-medium"
-                            >
+                            fetchHabits()
+                          }}
+                          className={`w-full py-4 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                            habit.completedToday
+                              ? 'bg-accent-success text-white hover:opacity-90 shadow-lg shadow-accent-success/20'
+                              : 'bg-accent-primary text-white hover:opacity-90 hover:shadow-lg hover:shadow-accent-primary/20'
+                          }`}
+                        >
+                          {habit.completedToday ? (
+                            <>
+                              <CheckCircle2 size={18} />
+                              Completed ({habit.target_value} {habit.target_unit})
+                            </>
+                          ) : (
+                            <>
+                              <Target size={18} />
                               Complete Target ({habit.target_value} {habit.target_unit})
-                            </button>
+                            </>
                           )}
-                        </>
+                        </button>
                       )}
                     </>
                   ) : (
@@ -763,7 +731,7 @@ export default function HabitsPage() {
 
                         fetchHabits()
                       }}
-                      className={`w-full py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                      className={`w-full py-4 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
                         habit.completedToday
                           ? 'bg-accent-success text-white hover:opacity-90 shadow-lg shadow-accent-success/20'
                           : 'bg-accent-primary text-white hover:opacity-90 hover:shadow-lg hover:shadow-accent-primary/20'
@@ -772,12 +740,12 @@ export default function HabitsPage() {
                       {habit.completedToday ? (
                         <>
                           <CheckCircle2 size={18} />
-                          Done Today
+                          Completed Today
                         </>
                       ) : (
                         <>
                           <Target size={18} />
-                          Mark Done
+                          Mark Complete
                         </>
                       )}
                     </button>
@@ -794,7 +762,7 @@ export default function HabitsPage() {
                     {habit.is_active ? (
                       <>
                         <Eye size={14} />
-                        Tracking
+                        Active
                       </>
                     ) : (
                       <>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/Toast'
 import { User, Mail, Globe, Eye, EyeOff, Save, Shield, Bell, Palette, Lock, Download, Clock, Check, ShoppingCart } from 'lucide-react'
@@ -78,6 +78,7 @@ export default function SettingsPage() {
   const [notifications, setNotifications] = useState<NotificationSettings>({
     daily_reminders: false, achievement_alerts: true, weekly_summary: true
   })
+  const savedTimerRef = useRef<NodeJS.Timeout | null>(null)
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -101,7 +102,16 @@ export default function SettingsPage() {
     'Europe/Paris', 'Asia/Tokyo', 'Asia/Singapore', 'Australia/Sydney', 'UTC'
   ]
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => { 
+    fetchData()
+    
+    // Cleanup timer on unmount
+    return () => {
+      if (savedTimerRef.current) {
+        clearTimeout(savedTimerRef.current)
+      }
+    }
+  }, [])
 
   const fetchData = async () => {
     try {
@@ -207,7 +217,17 @@ export default function SettingsPage() {
       }, { onConflict: 'user_id' })
 
       setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
+      
+      // Clear existing timer if any
+      if (savedTimerRef.current) {
+        clearTimeout(savedTimerRef.current)
+      }
+      
+      // Set timer with cleanup
+      savedTimerRef.current = setTimeout(() => {
+        setSaved(false)
+        savedTimerRef.current = null
+      }, 2000)
     } catch (error) {
       console.error('Error saving:', error)
       showToast('Error saving settings', 'error')

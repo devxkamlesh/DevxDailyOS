@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useToast } from '@/components/ui/Toast'
 import { Bell, Send, Users, CheckCircle2, AlertCircle, Info } from 'lucide-react'
 
@@ -14,6 +14,16 @@ export default function AdminNotificationsPage() {
   })
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
+  const sentTimerRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (sentTimerRef.current) {
+        clearTimeout(sentTimerRef.current)
+      }
+    }
+  }, [])
 
   const handleSend = async () => {
     if (!notification.title || !notification.message) {
@@ -26,7 +36,18 @@ export default function AdminNotificationsPage() {
     await new Promise(resolve => setTimeout(resolve, 1500))
     setSending(false)
     setSent(true)
-    setTimeout(() => setSent(false), 3000)
+    
+    // Clear existing timer if any
+    if (sentTimerRef.current) {
+      clearTimeout(sentTimerRef.current)
+    }
+    
+    // Set timer with cleanup
+    sentTimerRef.current = setTimeout(() => {
+      setSent(false)
+      sentTimerRef.current = null
+    }, 3000)
+    
     setNotification({ title: '', message: '', type: 'info', target: 'all' })
   }
 

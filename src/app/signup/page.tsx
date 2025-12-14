@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -15,6 +15,7 @@ export default function SignupPage() {
   const [success, setSuccess] = useState(false)
   const [registrationEnabled, setRegistrationEnabled] = useState(true)
   const [checkingSettings, setCheckingSettings] = useState(true)
+  const redirectTimerRef = useRef<NodeJS.Timeout | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -36,6 +37,13 @@ export default function SignupPage() {
       }
     }
     checkRegistration()
+    
+    // Cleanup timer on unmount
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current)
+      }
+    }
   }, [])
 
   // Show registration disabled message
@@ -95,9 +103,17 @@ export default function SignupPage() {
         }
 
         setSuccess(true)
-        setTimeout(() => {
+        
+        // Clear existing timer if any
+        if (redirectTimerRef.current) {
+          clearTimeout(redirectTimerRef.current)
+        }
+        
+        // Set redirect timer with cleanup
+        redirectTimerRef.current = setTimeout(() => {
           router.push('/dashboard')
           router.refresh()
+          redirectTimerRef.current = null
         }, 2000)
       }
     } catch (err: any) {

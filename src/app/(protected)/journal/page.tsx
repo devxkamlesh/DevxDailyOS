@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/Toast'
 import { BookOpen, Smile, Meh, Frown, Heart, Trophy, AlertCircle, ChevronLeft, ChevronRight, Save, Sparkles } from 'lucide-react'
@@ -38,10 +38,18 @@ export default function JournalPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [habitStats, setHabitStats] = useState({ completed: 0, total: 0 })
+  const savedTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     fetchEntry()
     fetchHabitStats()
+    
+    // Cleanup timer on unmount or date change
+    return () => {
+      if (savedTimerRef.current) {
+        clearTimeout(savedTimerRef.current)
+      }
+    }
   }, [selectedDate])
 
   const fetchEntry = async () => {
@@ -126,7 +134,17 @@ export default function JournalPage() {
       } else {
         setSaved(true)
         showToast('Journal entry saved!', 'success')
-        setTimeout(() => setSaved(false), 2000)
+        
+        // Clear existing timer if any
+        if (savedTimerRef.current) {
+          clearTimeout(savedTimerRef.current)
+        }
+        
+        // Set timer with cleanup
+        savedTimerRef.current = setTimeout(() => {
+          setSaved(false)
+          savedTimerRef.current = null
+        }, 2000)
       }
     } catch (error) {
       console.error('Error:', error)

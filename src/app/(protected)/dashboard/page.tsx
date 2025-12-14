@@ -4,14 +4,14 @@ import MonthlyGraph from '@/components/dashboard/MonthlyGraph'
 import QuickAddSection from '@/components/dashboard/QuickAddSection'
 import RecentActivity from '@/components/dashboard/RecentActivity'
 import TodaysHabits from '@/components/dashboard/TodaysHabits'
-import QuickStats from '@/components/dashboard/QuickStats'
+import QuickActions from '@/components/dashboard/QuickActions'
 
 export default function DashboardPage() {
   return (
     <>
       <Header />
       
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* Stats Overview */}
         <StatsRow />
 
@@ -25,11 +25,11 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Bottom Row - Quick Capture, Recent Activity & Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Bottom Row - Quick Capture, Recent Activity & Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
           <QuickAddSection />
           <RecentActivity />
-          <QuickStats />
+          <QuickActions />
         </div>
       </div>
     </>

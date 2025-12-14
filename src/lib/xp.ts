@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/client'
+import { updateXPWithRetry } from '@/lib/user-rewards-safe'
 
 /**
- * XP & Level System Utility
+ * XP & Level System Utility with Optimistic Locking
  * 
  * XP Earning Rules:
  * - +10 XP per habit completed (ONCE per day per habit)
@@ -12,6 +13,11 @@ import { createClient } from '@/lib/supabase/client'
  * Level Formula:
  * - Level = floor(sqrt(xp / 100)) + 1
  * - Level 1: 0 XP, Level 2: 100 XP, Level 3: 400 XP, Level 4: 900 XP, etc.
+ * 
+ * Security Features:
+ * - Uses optimistic locking to prevent concurrent data corruption (C008 fix)
+ * - Automatic retry on version conflicts
+ * - Tracks XP awards per habit per day to prevent double-awarding
  */
 
 export const XP_REWARDS = {
@@ -75,7 +81,7 @@ export function getLevelProgress(xp: number): {
 }
 
 /**
- * Award XP for completing a habit (with exploit prevention)
+ * Award XP for completing a habit (with exploit prevention & optimistic locking)
  */
 export async function awardHabitXP(
   userId: string,
@@ -101,45 +107,31 @@ export async function awardHabitXP(
       }
     }
 
-    // Get current XP and level
-    const { data: rewards, error: fetchError } = await supabase
-      .from('user_rewards')
-      .select('xp, level')
-      .eq('user_id', userId)
-      .single()
-
-    let currentXP = 0
-    let currentLevel = 1
-    
-    if (fetchError && fetchError.code !== 'PGRST116') {
-      console.error('Error fetching rewards:', fetchError)
-      return { success: false, message: 'Failed to fetch user rewards' }
-    }
-
-    if (rewards) {
-      currentXP = rewards.xp || 0
-      currentLevel = rewards.level || 1
-    }
-
-    const newXP = currentXP + XP_REWARDS.HABIT_COMPLETED
+    // Calculate level change
+    const currentLevel = calculateLevel(0) // Will be recalculated in the safe function
+    const newXP = XP_REWARDS.HABIT_COMPLETED
     const newLevel = calculateLevel(newXP)
-    const leveledUp = newLevel > currentLevel
+    const levelChange = newLevel - currentLevel
 
-    // Update or create rewards record
-    const { error: upsertError } = await supabase
-      .from('user_rewards')
-      .upsert({
-        user_id: userId,
-        xp: newXP,
-        level: newLevel
-      }, { onConflict: 'user_id' })
+    // Use safe XP update with optimistic locking and automatic retry
+    const result = await updateXPWithRetry(
+      userId, 
+      XP_REWARDS.HABIT_COMPLETED,
+      levelChange
+    )
 
-    if (upsertError) {
-      console.error('Error updating XP:', upsertError)
-      return { success: false, message: 'Failed to update XP' }
+    if (!result.success) {
+      return {
+        success: false,
+        message: result.message || 'Failed to award XP'
+      }
     }
 
-    // Record the XP award
+    // Calculate if user leveled up
+    const finalLevel = result.level || 1
+    const leveledUp = levelChange > 0
+
+    // Record the XP award (this is tracked separately from the transaction log)
     const { error: awardError } = await supabase
       .from('xp_awards')
       .insert({
@@ -150,24 +142,22 @@ export async function awardHabitXP(
       })
 
     if (awardError) {
-      // Rollback XP if award tracking fails
-      await supabase
-        .from('user_rewards')
-        .update({ xp: currentXP, level: currentLevel })
-        .eq('user_id', userId)
-      
       console.error('Error recording XP award:', awardError)
-      return { success: false, message: 'Failed to record XP award' }
+      // Note: We don't rollback here as the XP transaction is already logged
+      return {
+        success: false,
+        message: 'XP awarded but failed to record award tracking'
+      }
     }
 
     return {
       success: true,
-      message: leveledUp ? `Level up! You're now level ${newLevel}!` : 'XP awarded successfully',
+      message: leveledUp ? `Level up! You're now level ${finalLevel}!` : 'XP awarded successfully',
       xpAwarded: XP_REWARDS.HABIT_COMPLETED,
-      totalXP: newXP,
-      level: newLevel,
+      totalXP: result.xp || 0,
+      level: finalLevel,
       leveledUp,
-      newLevel: leveledUp ? newLevel : undefined
+      newLevel: leveledUp ? finalLevel : undefined
     }
   } catch (error) {
     console.error('Error in awardHabitXP:', error)

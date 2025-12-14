@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react'
+import { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react'
 import { X, CheckCircle2, AlertCircle, Info, AlertTriangle } from 'lucide-react'
 
 type ToastType = 'success' | 'error' | 'info' | 'warning'
@@ -42,22 +42,39 @@ const toastStyles = {
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
   const [mounted, setMounted] = useState(false)
+  const timersRef = useRef<Map<string, NodeJS.Timeout>>(new Map())
 
   useEffect(() => {
     setMounted(true)
+    
+    // Cleanup all timers on unmount
+    return () => {
+      timersRef.current.forEach(timer => clearTimeout(timer))
+      timersRef.current.clear()
+    }
   }, [])
 
   const showToast = useCallback((message: string, type: ToastType = 'info') => {
     const id = Math.random().toString(36).substring(7)
     setToasts(prev => [...prev, { id, message, type }])
 
-    // Auto remove after 4 seconds
-    setTimeout(() => {
+    // Auto remove after 4 seconds with proper cleanup
+    const timer = setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id))
+      timersRef.current.delete(id)
     }, 4000)
+
+    // Store timer reference for cleanup
+    timersRef.current.set(id, timer)
   }, [])
 
   const removeToast = (id: string) => {
+    // Clear the timer if it exists
+    const timer = timersRef.current.get(id)
+    if (timer) {
+      clearTimeout(timer)
+      timersRef.current.delete(id)
+    }
     setToasts(prev => prev.filter(t => t.id !== id))
   }
 

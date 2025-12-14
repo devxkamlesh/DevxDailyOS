@@ -125,26 +125,82 @@ export default function AdminBadgesPage() {
 
   const assignBadge = async (badgeId: string) => {
     if (!selectedUser) return
-    const { error } = await supabase.from('user_badges').insert({ user_id: selectedUser.id, badge_id: badgeId, is_primary: false })
-    if (error?.code === '23505') { showToast('Already has badge', 'error'); return }
-    if (error) { showToast('Error: ' + error.message, 'error'); return }
-    showToast('Badge assigned!', 'success')
-    fetchUserBadges(selectedUser.id)
+    
+    try {
+      const { data, error } = await supabase.rpc('assign_user_badge', {
+        p_user_id: selectedUser.id,
+        p_badge_id: badgeId
+      })
+      
+      if (error) {
+        console.error('Assign badge error:', error)
+        showToast('Error assigning badge: ' + error.message, 'error')
+        return
+      }
+      
+      if (!data) {
+        showToast('User already has this badge', 'warning')
+        return
+      }
+      
+      showToast('Badge assigned successfully!', 'success')
+      fetchUserBadges(selectedUser.id)
+    } catch (error: any) {
+      console.error('Assign badge error:', error)
+      showToast('Error assigning badge', 'error')
+    }
   }
 
   const removeBadge = async (userBadgeId: string) => {
-    const { error } = await supabase.from('user_badges').delete().eq('id', userBadgeId)
-    if (error) { showToast('Error: ' + error.message, 'error'); return }
-    showToast('Badge removed!', 'success')
-    if (selectedUser) fetchUserBadges(selectedUser.id)
+    if (!selectedUser) return
+    
+    try {
+      const { data, error } = await supabase.rpc('remove_user_badge', {
+        p_user_badge_id: userBadgeId,
+        p_user_id: selectedUser.id
+      })
+      
+      if (error) {
+        console.error('Remove badge error:', error)
+        showToast('Error removing badge: ' + error.message, 'error')
+        return
+      }
+      
+      if (!data) {
+        showToast('Badge not found or unauthorized', 'error')
+        return
+      }
+      
+      showToast('Badge removed successfully!', 'success')
+      fetchUserBadges(selectedUser.id)
+    } catch (error: any) {
+      console.error('Remove badge error:', error)
+      showToast('Error removing badge', 'error')
+    }
   }
 
   const setPrimary = async (userBadgeId: string) => {
     if (!selectedUser) return
-    await supabase.from('user_badges').update({ is_primary: false }).eq('user_id', selectedUser.id)
-    await supabase.from('user_badges').update({ is_primary: true }).eq('id', userBadgeId)
-    showToast('Primary set!', 'success')
-    fetchUserBadges(selectedUser.id)
+    
+    try {
+      // Use RPC function for atomic operation to prevent race conditions
+      const { error } = await supabase.rpc('set_primary_badge', {
+        p_user_id: selectedUser.id,
+        p_user_badge_id: userBadgeId
+      })
+      
+      if (error) {
+        console.error('Set primary badge error:', error)
+        showToast('Error setting primary badge: ' + error.message, 'error')
+        return
+      }
+      
+      showToast('Primary badge set!', 'success')
+      fetchUserBadges(selectedUser.id)
+    } catch (error: any) {
+      console.error('Set primary badge error:', error)
+      showToast('Error setting primary badge', 'error')
+    }
   }
 
   const openUserModal = (user: UserProfile) => {

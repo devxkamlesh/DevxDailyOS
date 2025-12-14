@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import ErrorBoundary from '@/components/ErrorBoundary'
 import { 
   LayoutDashboard, Users, BarChart3, Trophy, ShoppingBag, 
   Settings, ChevronLeft, ChevronRight, Shield, Bell,
   Target, Ticket, Coins, Zap, Menu, X, IndianRupee, Activity,
-  CreditCard, Mail, Award, ChevronDown
+  CreditCard, Mail, Award, ChevronDown, PieChart
 } from 'lucide-react'
 
 const adminNavSections = [
@@ -31,6 +32,7 @@ const adminNavSections = [
     items: [
       { href: '/admin/habits', label: 'Habits Data', icon: Target },
       { href: '/admin/challenges', label: 'Challenges', icon: Trophy },
+      { href: '/admin/weekly-challenges', label: 'Weekly Challenges', icon: Award },
       { href: '/admin/badges', label: 'Badges', icon: Award },
     ]
   },
@@ -52,6 +54,7 @@ const adminNavSections = [
   {
     title: 'System',
     items: [
+      { href: '/admin/charts', label: 'Chart Management', icon: PieChart },
       { href: '/admin/notifications', label: 'Notifications', icon: Bell },
       { href: '/admin/settings', label: 'Settings', icon: Settings },
     ]
@@ -208,7 +211,13 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
       {/* Main Content */}
       <main className="flex-1 min-h-screen overflow-x-hidden">
         <div className="p-6 lg:p-8 max-w-full">
-          {children}
+          <ErrorBoundary
+            onError={(error, errorInfo) => {
+              console.error('Admin Panel Error:', error, errorInfo)
+            }}
+          >
+            {children}
+          </ErrorBoundary>
         </div>
       </main>
     </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/Toast'
 import { Ticket, Plus, Edit2, Trash2, X, Copy, Check, Calendar, Users } from 'lucide-react'
@@ -26,6 +26,7 @@ export default function AdminCouponsPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
+  const copiedTimerRef = useRef<NodeJS.Timeout | null>(null)
   const [formData, setFormData] = useState({
     code: '',
     description: '',
@@ -40,6 +41,13 @@ export default function AdminCouponsPage() {
 
   useEffect(() => {
     fetchCoupons()
+    
+    // Cleanup timer on unmount
+    return () => {
+      if (copiedTimerRef.current) {
+        clearTimeout(copiedTimerRef.current)
+      }
+    }
   }, [])
 
   const fetchCoupons = async () => {
@@ -134,7 +142,17 @@ export default function AdminCouponsPage() {
   const copyCode = (code: string) => {
     navigator.clipboard.writeText(code)
     setCopied(code)
-    setTimeout(() => setCopied(null), 2000)
+    
+    // Clear existing timer if any
+    if (copiedTimerRef.current) {
+      clearTimeout(copiedTimerRef.current)
+    }
+    
+    // Set timer with cleanup
+    copiedTimerRef.current = setTimeout(() => {
+      setCopied(null)
+      copiedTimerRef.current = null
+    }, 2000)
   }
 
   const isExpired = (date: string | null) => {

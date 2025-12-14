@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Trophy, Award, Zap, Target, Star, Crown, Flame, TrendingUp, Calendar, CheckCircle2 } from 'lucide-react'
 
@@ -38,10 +38,18 @@ export default function Gamification() {
   const [achievements, setAchievements] = useState<Achievement[]>([])
   const [showCelebration, setShowCelebration] = useState(false)
   const [celebrationMessage, setCelebrationMessage] = useState('')
+  const celebrationTimerRef = useRef<NodeJS.Timeout | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
     fetchGamificationData()
+    
+    // Cleanup timer on unmount
+    return () => {
+      if (celebrationTimerRef.current) {
+        clearTimeout(celebrationTimerRef.current)
+      }
+    }
   }, [])
 
   const fetchGamificationData = async () => {
@@ -219,7 +227,17 @@ export default function Gamification() {
       const achievement = newlyUnlocked[0]
       setCelebrationMessage(`🎉 Achievement Unlocked: ${achievement.title}!`)
       setShowCelebration(true)
-      setTimeout(() => setShowCelebration(false), 5000)
+      
+      // Clear existing timer if any
+      if (celebrationTimerRef.current) {
+        clearTimeout(celebrationTimerRef.current)
+      }
+      
+      // Auto-hide celebration with cleanup
+      celebrationTimerRef.current = setTimeout(() => {
+        setShowCelebration(false)
+        celebrationTimerRef.current = null
+      }, 5000)
     }
   }
 

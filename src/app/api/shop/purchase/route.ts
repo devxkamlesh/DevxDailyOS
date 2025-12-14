@@ -24,10 +24,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
     }
 
-    // Get user's current coins
+    // Get user's current coins and version for optimistic locking
     const { data: userRewards, error: rewardsError } = await supabase
       .from('user_rewards')
-      .select('coins')
+      .select('coins, version')
       .eq('user_id', user.id)
       .single()
 
@@ -39,28 +39,51 @@ export async function POST(request: Request) {
     let couponDiscount = 0
     let couponId = null
 
-    // Validate coupon if provided
+    // Validate coupon if provided - Direct database query for security
     if (couponCode) {
-      const couponValidation = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/coupons/validate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          code: couponCode,
-          userId: user.id,
-          planType: plan.plan_type,
-          purchaseAmount: plan.coin_price
-        })
-      })
+      const { data: coupon, error: couponError } = await supabase
+        .from('coupons')
+        .select('*')
+        .eq('code', couponCode.toUpperCase())
+        .eq('is_active', true)
+        .single()
 
-      const couponResult = await couponValidation.json()
-      
-      if (!couponResult.valid) {
-        return NextResponse.json({ error: couponResult.error }, { status: 400 })
+      if (couponError || !coupon) {
+        return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 })
       }
 
-      finalPrice = couponResult.finalAmount
-      couponDiscount = couponResult.discount
-      couponId = couponResult.coupon.id
+      // Check if coupon is expired
+      if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) {
+        return NextResponse.json({ error: 'Coupon has expired' }, { status: 400 })
+      }
+
+      // Check usage limits
+      if (coupon.max_uses > 0 && coupon.used_count >= coupon.max_uses) {
+        return NextResponse.json({ error: 'Coupon usage limit reached' }, { status: 400 })
+      }
+
+      // Check minimum purchase requirement
+      if (coupon.min_purchase > 0 && plan.coin_price < coupon.min_purchase) {
+        return NextResponse.json({ 
+          error: `Minimum purchase of ${coupon.min_purchase} coins required for this coupon` 
+        }, { status: 400 })
+      }
+
+      // Calculate discount
+      if (coupon.discount_type === 'percentage') {
+        couponDiscount = Math.floor((plan.coin_price * coupon.discount_value) / 100)
+      } else {
+        couponDiscount = coupon.discount_value
+      }
+
+      finalPrice = Math.max(0, plan.coin_price - couponDiscount)
+      couponId = coupon.id
+
+      // Update coupon usage count
+      await supabase
+        .from('coupons')
+        .update({ used_count: coupon.used_count + 1 })
+        .eq('id', coupon.id)
     }
 
     // Check if user has enough coins
@@ -70,9 +93,10 @@ export async function POST(request: Request) {
       }, { status: 400 })
     }
 
-    // Start transaction
-    const { error: transactionError } = await supabase.rpc('process_purchase', {
+    // Start transaction with optimistic locking
+    const { data: purchaseResult, error: transactionError } = await supabase.rpc('process_purchase_safe', {
       p_user_id: user.id,
+      p_expected_version: userRewards.version || 0,
       p_plan_id: planId,
       p_coupon_id: couponId,
       p_original_price: plan.coin_price,
@@ -83,6 +107,13 @@ export async function POST(request: Request) {
 
     if (transactionError) {
       return NextResponse.json({ error: 'Purchase failed' }, { status: 500 })
+    }
+
+    // Check if the safe function returned an error (version mismatch, insufficient funds, etc.)
+    if (purchaseResult && !purchaseResult.success) {
+      return NextResponse.json({ 
+        error: purchaseResult.message || 'Purchase failed - please try again' 
+      }, { status: 400 })
     }
 
     // Apply the purchased item to user

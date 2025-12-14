@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { TrendingUp } from 'lucide-react'
 import {
@@ -24,10 +24,8 @@ export default function MonthlyGraph() {
   const [dailyData, setDailyData] = useState<DailyData[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
+  const fetchMonthlyData = useCallback(async () => {
     let mounted = true
-    
-    const fetchMonthlyData = async () => {
       try {
         const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
@@ -91,28 +89,38 @@ export default function MonthlyGraph() {
         })
       }
 
-        if (mounted) {
-          setDailyData(daily)
-          setLoading(false)
-        }
-      } catch (error) {
-        console.error('Error in fetchMonthlyData:', error)
-        if (mounted) setLoading(false)
+      if (mounted) {
+        setDailyData(daily)
+        setLoading(false)
       }
+    } catch (error) {
+      console.error('Error in fetchMonthlyData:', error)
+      if (mounted) setLoading(false)
     }
+    
+    return () => { mounted = false }
+  }, [])
 
+  useEffect(() => {
     fetchMonthlyData()
+    
+    // Listen for habit completion events to update chart in realtime
+    const handleHabitUpdate = () => {
+      fetchMonthlyData()
+    }
+    
+    window.addEventListener('habitUpdated', handleHabitUpdate)
     
     // Fallback timeout
     const timeout = setTimeout(() => {
-      if (mounted) setLoading(false)
+      setLoading(false)
     }, 5000)
 
     return () => {
-      mounted = false
       clearTimeout(timeout)
+      window.removeEventListener('habitUpdated', handleHabitUpdate)
     }
-  }, [])
+  }, [fetchMonthlyData])
 
   if (loading) {
     return (
@@ -239,6 +247,12 @@ function YearHeatmapInline() {
 
   useEffect(() => {
     fetchYearData()
+    
+    // Listen for habit updates to refresh heatmap
+    const handleHabitUpdate = () => fetchYearData()
+    window.addEventListener('habitUpdated', handleHabitUpdate)
+    
+    return () => window.removeEventListener('habitUpdated', handleHabitUpdate)
   }, [])
 
   const fetchYearData = async () => {

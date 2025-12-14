@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import StatCard from '@/components/ui/StatCard'
 import { CheckCircle2, Target, Flame } from 'lucide-react'
@@ -14,10 +14,8 @@ export default function StatsRow() {
   })
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
+  const fetchStats = useCallback(async () => {
     let mounted = true
-    
-    const fetchStats = async () => {
       try {
         const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
@@ -100,33 +98,40 @@ export default function StatsRow() {
           }
         })
 
-        if (mounted) {
-          setStats({
-            habitsCompleted: completed,
-            habitsTotal: habits.length,
-            deepWorkMinutes,
-            streak
-          })
-          setLoading(false)
-        }
-      } catch (error) {
-        console.error('Error in fetchStats:', error)
-        if (mounted) setLoading(false)
+      if (mounted) {
+        setStats({
+          habitsCompleted: completed,
+          habitsTotal: habits.length,
+          deepWorkMinutes,
+          streak
+        })
+        setLoading(false)
       }
+    } catch (error) {
+      console.error('Error in fetchStats:', error)
+      if (mounted) setLoading(false)
     }
+    
+    return () => { mounted = false }
+  }, [])
 
+  useEffect(() => {
     fetchStats()
+    
+    // Listen for habit updates to refresh stats in realtime
+    const handleHabitUpdate = () => fetchStats()
+    window.addEventListener('habitUpdated', handleHabitUpdate)
     
     // Fallback timeout
     const timeout = setTimeout(() => {
-      if (mounted) setLoading(false)
+      setLoading(false)
     }, 3000)
 
     return () => {
-      mounted = false
       clearTimeout(timeout)
+      window.removeEventListener('habitUpdated', handleHabitUpdate)
     }
-  }, [])
+  }, [fetchStats])
 
   if (loading) {
     return (
@@ -144,17 +149,20 @@ export default function StatsRow() {
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       <StatCard 
         label="Habits Done" 
-        value={`${stats.habitsCompleted} / ${stats.habitsTotal}`} 
+        animatedNumber={stats.habitsCompleted}
+        suffix={` / ${stats.habitsTotal}`}
         icon={CheckCircle2}
       />
       <StatCard 
         label="Deep Work" 
-        value={`${stats.deepWorkMinutes} min`} 
+        animatedNumber={stats.deepWorkMinutes}
+        suffix=" min"
         icon={Target}
       />
       <StatCard 
         label="Streak" 
-        value={`${stats.streak} days`} 
+        animatedNumber={stats.streak}
+        suffix=" days"
         icon={Flame}
       />
     </div>

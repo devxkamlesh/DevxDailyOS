@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Clock, CheckCircle2, Rocket, Camera, Briefcase } from 'lucide-react'
 import Link from 'next/link'
@@ -19,10 +19,8 @@ export default function RecentActivity() {
   const [activities, setActivities] = useState<Activity[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
+  const fetchActivity = useCallback(async () => {
     let mounted = true
-    
-    const fetchActivity = async () => {
       try {
         const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
@@ -112,28 +110,35 @@ export default function RecentActivity() {
         // Sort by timestamp
         activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
-        if (mounted) {
-          setActivities(activities.slice(0, 5))
-          setLoading(false)
-        }
-      } catch (error) {
-        console.error('Error in fetchActivity:', error)
-        if (mounted) setLoading(false)
+      if (mounted) {
+        setActivities(activities.slice(0, 5))
+        setLoading(false)
       }
+    } catch (error) {
+      console.error('Error in fetchActivity:', error)
+      if (mounted) setLoading(false)
     }
+    
+    return () => { mounted = false }
+  }, [])
 
+  useEffect(() => {
     fetchActivity()
+    
+    // Listen for habit updates to refresh activity in realtime
+    const handleHabitUpdate = () => fetchActivity()
+    window.addEventListener('habitUpdated', handleHabitUpdate)
     
     // Fallback timeout
     const timeout = setTimeout(() => {
-      if (mounted) setLoading(false)
+      setLoading(false)
     }, 5000)
 
     return () => {
-      mounted = false
       clearTimeout(timeout)
+      window.removeEventListener('habitUpdated', handleHabitUpdate)
     }
-  }, [])
+  }, [fetchActivity])
 
   const getTimeAgo = (timestamp: string) => {
     const now = new Date()

@@ -19,7 +19,10 @@ import {
   ShoppingCart,
   Medal,
   ChevronDown,
-  Zap
+  Zap,
+  Users,
+  Cloud,
+  Award
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
@@ -44,8 +47,21 @@ const navSections = [
     title: 'Gamification',
     items: [
       { href: '/achievements', label: 'Achievements', icon: Trophy },
+      { href: '/challenges', label: 'Challenges', icon: Award },
       { href: '/shop', label: 'Shop', icon: ShoppingCart },
       { href: '/leaderboard', label: 'Leaderboard', icon: Medal },
+    ]
+  },
+  {
+    title: 'Social',
+    items: [
+      { href: '/friends', label: 'Friends', icon: Users },
+    ]
+  },
+  {
+    title: 'Tracking',
+    items: [
+      { href: '/weather', label: 'Weather', icon: Cloud },
     ]
   },
   {

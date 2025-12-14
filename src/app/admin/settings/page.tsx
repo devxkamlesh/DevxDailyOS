@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Settings, Save, Shield, Database, Key, RefreshCw, Check, AlertCircle } from 'lucide-react'
 
@@ -28,6 +28,7 @@ const defaultSettings: SystemSettings = {
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<SystemSettings>(defaultSettings)
+  const savedTimerRef = useRef<NodeJS.Timeout | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -36,6 +37,13 @@ export default function AdminSettingsPage() {
 
   useEffect(() => {
     fetchSettings()
+    
+    // Cleanup timer on unmount
+    return () => {
+      if (savedTimerRef.current) {
+        clearTimeout(savedTimerRef.current)
+      }
+    }
   }, [])
 
   const fetchSettings = async () => {
@@ -99,7 +107,17 @@ export default function AdminSettingsPage() {
       }
 
       setSaved(true)
-      setTimeout(() => setSaved(false), 3000)
+      
+      // Clear existing timer if any
+      if (savedTimerRef.current) {
+        clearTimeout(savedTimerRef.current)
+      }
+      
+      // Set timer with cleanup
+      savedTimerRef.current = setTimeout(() => {
+        setSaved(false)
+        savedTimerRef.current = null
+      }, 3000)
     } catch (err: any) {
       console.error('Save error:', err)
       setError(err.message || 'Failed to save settings')

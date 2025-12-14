@@ -1,0 +1,61 @@
+{
+  "name": "Sadhana - Habit Tracker",
+  "short_name": "Sadhana",
+  "description": "Build better habits with gamification. Track your progress, earn rewards, and level up your life.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#8b5cf6",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["productivity", "lifestyle", "health"],
+  "icons": [
+    {
+      "src": "/Logo/logo-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/Logo/logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/dashboard.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Dashboard view"
+    },
+    {
+      "src": "/screenshots/habits.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Habits view"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "My Habits",
+      "short_name": "Habits",
+      "description": "View and track your habits",
+      "url": "/habits",
+      "icons": [{ "src": "/Logo/logo-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Focus Mode",
+      "short_name": "Focus",
+      "description": "Start a focus session",
+      "url": "/focus",
+      "icons": [{ "src": "/Logo/logo-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}

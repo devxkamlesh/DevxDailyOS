@@ -156,6 +156,9 @@ export default function TodaysHabits() {
       })
       return
     }
+    
+    // Dispatch event after DB update for accurate data
+    window.dispatchEvent(new CustomEvent('habitUpdated'))
 
     // Handle coins and XP with proper tracking
     if (newCompleted && !wasCompleted) {
@@ -252,6 +255,9 @@ export default function TodaysHabits() {
       })
       return
     }
+    
+    // Dispatch event after DB update for accurate data
+    window.dispatchEvent(new CustomEvent('habitUpdated'))
 
     // Handle coins and XP with proper tracking
     if (!wasCompleted && isNowCompleted) {

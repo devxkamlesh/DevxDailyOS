@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/client'
+import { addCoinsWithRetry, spendCoinsWithRetry } from '@/lib/user-rewards-safe'
 
 /**
- * FIXED Coin System Utility - Prevents Exploits
+ * FIXED Coin System Utility - Prevents Exploits & Concurrent Data Corruption
  * 
  * Earning Rules:
  * - +1 coin per habit completed (ONCE per day)
@@ -13,7 +14,8 @@ import { createClient } from '@/lib/supabase/client'
  * - Tracks coin awards per habit per day
  * - Prevents double-awarding
  * - Deducts coins on uncompletion
- * - Uses database transactions
+ * - Uses optimistic locking to prevent concurrent data corruption (C008 fix)
+ * - Automatic retry on version conflicts
  */
 
 export const COIN_REWARDS = {
@@ -29,7 +31,7 @@ interface CoinTransactionResult {
 }
 
 /**
- * Award coins for completing a habit (with exploit prevention)
+ * Award coins for completing a habit (with exploit prevention & optimistic locking)
  */
 export async function awardHabitCoins(
   userId: string,
@@ -55,49 +57,21 @@ export async function awardHabitCoins(
       }
     }
 
-    // Get current coins
-    const { data: rewards, error: fetchError } = await supabase
-      .from('user_rewards')
-      .select('coins')
-      .eq('user_id', userId)
-      .single()
+    // Use safe coin addition with optimistic locking and automatic retry
+    const result = await addCoinsWithRetry(
+      userId, 
+      COIN_REWARDS.HABIT_COMPLETED, 
+      `Habit completed: ${habitId} on ${date}`
+    )
 
-    let currentCoins = 0
-    
-    if (fetchError && fetchError.code !== 'PGRST116') {
-      // Error other than "not found"
-      console.error('Error fetching rewards:', fetchError)
+    if (!result.success) {
       return {
         success: false,
-        message: 'Failed to fetch user rewards'
+        message: result.message || 'Failed to award coins'
       }
     }
 
-    if (rewards) {
-      currentCoins = rewards.coins
-    }
-
-    const newCoins = currentCoins + COIN_REWARDS.HABIT_COMPLETED
-
-    // Update or create rewards record
-    const { error: upsertError } = await supabase
-      .from('user_rewards')
-      .upsert({
-        user_id: userId,
-        coins: newCoins
-      }, {
-        onConflict: 'user_id'
-      })
-
-    if (upsertError) {
-      console.error('Error updating coins:', upsertError)
-      return {
-        success: false,
-        message: 'Failed to update coins'
-      }
-    }
-
-    // Record the coin award
+    // Record the coin award (this is tracked separately from the transaction log)
     const { error: awardError } = await supabase
       .from('coin_awards')
       .insert({
@@ -108,16 +82,12 @@ export async function awardHabitCoins(
       })
 
     if (awardError) {
-      // Rollback coins if award tracking fails
-      await supabase
-        .from('user_rewards')
-        .update({ coins: currentCoins })
-        .eq('user_id', userId)
-      
       console.error('Error recording coin award:', awardError)
+      // Note: We don't rollback here as the coin transaction is already logged
+      // The coin_awards table is for preventing double-awards, not for accounting
       return {
         success: false,
-        message: 'Failed to record coin award'
+        message: 'Coins awarded but failed to record award tracking'
       }
     }
 
@@ -125,7 +95,7 @@ export async function awardHabitCoins(
       success: true,
       message: 'Coins awarded successfully',
       coinsAwarded: COIN_REWARDS.HABIT_COMPLETED,
-      totalCoins: newCoins
+      totalCoins: result.coins || 0
     }
   } catch (error) {
     console.error('Error in awardHabitCoins:', error)
@@ -137,7 +107,7 @@ export async function awardHabitCoins(
 }
 
 /**
- * Deduct coins when uncompleting a habit
+ * Deduct coins when uncompleting a habit (with optimistic locking)
  */
 export async function deductHabitCoins(
   userId: string,
@@ -163,33 +133,17 @@ export async function deductHabitCoins(
       }
     }
 
-    // Get current coins
-    const { data: rewards } = await supabase
-      .from('user_rewards')
-      .select('coins')
-      .eq('user_id', userId)
-      .single()
+    // Use safe coin spending with optimistic locking and automatic retry
+    const result = await spendCoinsWithRetry(
+      userId, 
+      award.coins_awarded, 
+      `Habit uncompleted: ${habitId} on ${date}`
+    )
 
-    if (!rewards) {
+    if (!result.success) {
       return {
         success: false,
-        message: 'User rewards not found'
-      }
-    }
-
-    const newCoins = Math.max(0, rewards.coins - award.coins_awarded)
-
-    // Update coins
-    const { error: updateError } = await supabase
-      .from('user_rewards')
-      .update({ coins: newCoins })
-      .eq('user_id', userId)
-
-    if (updateError) {
-      console.error('Error deducting coins:', updateError)
-      return {
-        success: false,
-        message: 'Failed to deduct coins'
+        message: result.message || 'Failed to deduct coins'
       }
     }
 
@@ -202,12 +156,6 @@ export async function deductHabitCoins(
       .eq('date', date)
 
     if (deleteError) {
-      // Rollback coins if deletion fails
-      await supabase
-        .from('user_rewards')
-        .update({ coins: rewards.coins })
-        .eq('user_id', userId)
-      
       console.error('Error deleting coin award:', deleteError)
       return {
         success: false,
@@ -219,7 +167,7 @@ export async function deductHabitCoins(
       success: true,
       message: 'Coins deducted successfully',
       coinsAwarded: -award.coins_awarded,
-      totalCoins: newCoins
+      totalCoins: result.coins || 0
     }
   } catch (error) {
     console.error('Error in deductHabitCoins:', error)
@@ -256,34 +204,21 @@ export async function checkCoinsAwarded(
 }
 
 /**
- * Reward user for unlocking an achievement
+ * Reward user for unlocking an achievement (with optimistic locking)
  */
 export async function rewardAchievementUnlock(userId: string): Promise<CoinTransactionResult> {
   try {
-    const supabase = createClient()
+    // Use safe coin addition with optimistic locking and automatic retry
+    const result = await addCoinsWithRetry(
+      userId, 
+      COIN_REWARDS.ACHIEVEMENT_UNLOCKED, 
+      'Achievement unlocked'
+    )
 
-    const { data: rewards } = await supabase
-      .from('user_rewards')
-      .select('coins')
-      .eq('user_id', userId)
-      .single()
-
-    const currentCoins = rewards?.coins || 0
-    const newCoins = currentCoins + COIN_REWARDS.ACHIEVEMENT_UNLOCKED
-
-    const { error } = await supabase
-      .from('user_rewards')
-      .upsert({
-        user_id: userId,
-        coins: newCoins
-      }, {
-        onConflict: 'user_id'
-      })
-
-    if (error) {
+    if (!result.success) {
       return {
         success: false,
-        message: 'Failed to award achievement coins'
+        message: result.message || 'Failed to award achievement coins'
       }
     }
 
@@ -291,7 +226,7 @@ export async function rewardAchievementUnlock(userId: string): Promise<CoinTrans
       success: true,
       message: 'Achievement coins awarded',
       coinsAwarded: COIN_REWARDS.ACHIEVEMENT_UNLOCKED,
-      totalCoins: newCoins
+      totalCoins: result.coins || 0
     }
   } catch (error) {
     console.error('Error in rewardAchievementUnlock:', error)
