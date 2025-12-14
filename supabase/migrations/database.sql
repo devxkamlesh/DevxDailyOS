@@ -2309,3 +2309,171 @@ ANALYZE profiles;
 -- - User rewards bounds checking
 -- - Challenge progress validation
 -- - Shop purchase price validation
+
+
+-- ============================================================================
+-- MEDIUM PRIORITY FIXES - December 15, 2025
+-- M003: Database Schema Normalization
+-- ============================================================================
+
+-- ============================================================================
+-- M003: FIX DUPLICATE COLUMNS IN HABIT_LOGS
+-- ============================================================================
+
+-- Check if both 'note' and 'notes' columns exist, keep only 'notes'
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'habit_logs' AND column_name = 'note'
+  ) THEN
+    UPDATE habit_logs SET notes = note WHERE notes IS NULL AND note IS NOT NULL;
+    ALTER TABLE habit_logs DROP COLUMN IF EXISTS note;
+    RAISE NOTICE 'Migrated note column to notes and dropped duplicate';
+  END IF;
+END $$;
+
+-- ============================================================================
+-- M003: FIX TIMEZONE DUPLICATION (profiles vs user_settings)
+-- ============================================================================
+
+COMMENT ON COLUMN profiles.timezone IS 'Primary timezone setting for user. user_settings.timezone is deprecated.';
+
+-- Create view for unified user preferences
+CREATE OR REPLACE VIEW user_preferences AS
+SELECT 
+  p.id as user_id,
+  p.username,
+  p.timezone,
+  COALESCE(us.theme, 'dark') as theme,
+  COALESCE(us.notifications_enabled, true) as notifications_enabled,
+  COALESCE(us.sound_enabled, true) as sound_enabled,
+  COALESCE(us.daily_reminder_time, '09:00') as daily_reminder_time
+FROM profiles p
+LEFT JOIN user_settings us ON p.id = us.user_id;
+
+-- ============================================================================
+-- M003: FIX SYSTEM_SETTINGS SINGLE ROW CONSTRAINT
+-- ============================================================================
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'system_settings_single_row'
+  ) THEN
+    INSERT INTO system_settings (id, maintenance_mode, maintenance_message)
+    VALUES ('00000000-0000-0000-0000-000000000001', false, null)
+    ON CONFLICT (id) DO NOTHING;
+    
+    DELETE FROM system_settings WHERE id != '00000000-0000-0000-0000-000000000001';
+    
+    ALTER TABLE system_settings 
+    ADD CONSTRAINT system_settings_single_row 
+    CHECK (id = '00000000-0000-0000-0000-000000000001');
+    
+    RAISE NOTICE 'Added single row constraint to system_settings';
+  END IF;
+END $$;
+
+-- ============================================================================
+-- M003: FIX CHART_METRICS - Add idempotency key
+-- ============================================================================
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_constraint 
+    WHERE conname = 'chart_metrics_recorded_at_metric_group_key_user_id_key'
+  ) THEN
+    ALTER TABLE chart_metrics 
+    DROP CONSTRAINT chart_metrics_recorded_at_metric_group_key_user_id_key;
+  END IF;
+  
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'chart_metrics' AND column_name = 'idempotency_key'
+  ) THEN
+    ALTER TABLE chart_metrics ADD COLUMN idempotency_key text;
+    CREATE INDEX IF NOT EXISTS idx_chart_metrics_idempotency 
+    ON chart_metrics(idempotency_key) WHERE idempotency_key IS NOT NULL;
+  END IF;
+END $$;
+
+-- ============================================================================
+-- M003: ADD MISSING FOREIGN KEY CONSTRAINTS
+-- ============================================================================
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_habit_logs_habit') THEN
+    ALTER TABLE habit_logs 
+    ADD CONSTRAINT fk_habit_logs_habit 
+    FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_habit_logs_user') THEN
+    ALTER TABLE habit_logs 
+    ADD CONSTRAINT fk_habit_logs_user 
+    FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE;
+  END IF;
+END $$;
+
+-- ============================================================================
+-- HELPER FUNCTION: Get normalized user data
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION get_user_profile_complete(p_user_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_result jsonb;
+BEGIN
+  SELECT jsonb_build_object(
+    'profile', jsonb_build_object(
+      'id', p.id,
+      'username', p.username,
+      'full_name', p.full_name,
+      'avatar_url', p.avatar_url,
+      'timezone', p.timezone,
+      'created_at', p.created_at
+    ),
+    'rewards', jsonb_build_object(
+      'coins', COALESCE(ur.coins, 0),
+      'xp', COALESCE(ur.xp, 0),
+      'level', COALESCE(ur.level, 1),
+      'current_streak', COALESCE(ur.current_streak, 0),
+      'longest_streak', COALESCE(ur.longest_streak, 0)
+    ),
+    'settings', jsonb_build_object(
+      'theme', COALESCE(us.theme, 'dark'),
+      'notifications_enabled', COALESCE(us.notifications_enabled, true),
+      'sound_enabled', COALESCE(us.sound_enabled, true)
+    ),
+    'stats', jsonb_build_object(
+      'total_habits', (SELECT COUNT(*) FROM habits WHERE user_id = p_user_id AND is_active = true),
+      'total_completions', (SELECT COUNT(*) FROM habit_logs WHERE user_id = p_user_id AND completed = true),
+      'badges_earned', (SELECT COUNT(*) FROM user_badges WHERE user_id = p_user_id)
+    )
+  )
+  INTO v_result
+  FROM profiles p
+  LEFT JOIN user_rewards ur ON p.id = ur.user_id
+  LEFT JOIN user_settings us ON p.id = us.user_id
+  WHERE p.id = p_user_id;
+  
+  RETURN COALESCE(v_result, '{}'::jsonb);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION get_user_profile_complete(uuid) TO authenticated;
+
+-- ============================================================================
+-- FINAL SCHEMA VERSION UPDATE
+-- ============================================================================
+COMMENT ON SCHEMA public IS 'Sadhana Database Schema v2.1 - COMPLETE - December 15, 2025 - Includes ALL security fixes (C001-C008, H001-H012, M001-M015), performance optimizations, data consistency triggers, and complete feature set';
+
+-- ============================================================================
+-- END OF COMPLETE DATABASE SCHEMA
+-- ============================================================================
