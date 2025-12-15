@@ -22,11 +22,7 @@ import {
   Zap,
   Users,
   Flame,
-  MessageSquarePlus,
-  Shield,
-  Megaphone,
-  FileText,
-  BarChart3
+  MessageSquarePlus
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
@@ -77,15 +73,6 @@ const navSections = [
     items: [
       { href: '/settings', label: 'Settings', icon: Settings },
       { href: '/feedback', label: 'Feedback', icon: MessageSquarePlus },
-    ]
-  },
-  {
-    title: 'Admin',
-    items: [
-      { href: '/admin/feedback', label: 'Feedback', icon: MessageSquarePlus },
-      { href: '/admin/announcements', label: 'Announcements', icon: Megaphone },
-      { href: '/admin/reports', label: 'Reports', icon: BarChart3 },
-      { href: '/admin/logs', label: 'System Logs', icon: FileText },
     ]
   }
 ]
