@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Flame, Calendar, Trophy, Star, Crown, Lock, CheckCircle2, Gift } from 'lucide-react'
+import DateManipulationBlocker from '@/components/ui/DateManipulationBlocker'
 
 interface StreakBadge {
   days: number
@@ -85,16 +86,19 @@ export default function StreakPage() {
       const claimed = claimedData?.map(c => parseInt(c.achievement_id.replace('streak_', ''))) || []
       setClaimedStreaks(claimed)
 
-      // Calculate streaks
+      // Calculate streaks using IST timezone
       const uniqueDates = [...new Set(logs?.map(l => l.date) || [])].sort().reverse()
       let currentStreak = 0
       let longestStreak = rewards?.longest_streak || 0
 
+      // Import getLocalDateString for IST timezone
+      const { getLocalDateString } = await import('@/lib/date-utils')
+      
       const today = new Date()
       for (let i = 0; i < uniqueDates.length; i++) {
         const checkDate = new Date(today)
         checkDate.setDate(checkDate.getDate() - i)
-        const checkDateStr = checkDate.toISOString().split('T')[0]
+        const checkDateStr = getLocalDateString(checkDate)
         
         if (uniqueDates.includes(checkDateStr)) {
           currentStreak++
@@ -107,12 +111,12 @@ export default function StreakPage() {
 
       longestStreak = Math.max(currentStreak, longestStreak)
 
-      // Build streak history (last 30 days)
+      // Build streak history (last 30 days) using IST timezone
       const history: { date: string; completed: number }[] = []
       for (let i = 29; i >= 0; i--) {
         const d = new Date(today)
         d.setDate(d.getDate() - i)
-        const dateStr = d.toISOString().split('T')[0]
+        const dateStr = getLocalDateString(d)
         const dayLogs = logs?.filter(l => l.date === dateStr) || []
         history.push({ date: dateStr, completed: dayLogs.length })
       }
@@ -202,6 +206,7 @@ export default function StreakPage() {
   }
 
   return (
+    <DateManipulationBlocker>
     <div className="space-y-6">
       {/* Header */}
       <div>
@@ -284,7 +289,11 @@ export default function StreakPage() {
         <div className="flex gap-1 flex-wrap">
           {streakHistory.map((day, i) => {
             const date = new Date(day.date)
-            const isToday = day.date === new Date().toISOString().split('T')[0]
+            // Use IST timezone for today check
+            const todayIST = new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })
+            const todayDate = new Date(todayIST)
+            const todayStr = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`
+            const isToday = day.date === todayStr
             return (
               <div
                 key={i}
@@ -421,5 +430,6 @@ export default function StreakPage() {
         </div>
       </div>
     </div>
+    </DateManipulationBlocker>
   )
 }

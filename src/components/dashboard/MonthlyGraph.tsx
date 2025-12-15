@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { TrendingUp } from 'lucide-react'
+import { getLocalDateString } from '@/lib/date-utils'
 import {
   AreaChart,
   Area,
@@ -61,8 +62,8 @@ export default function MonthlyGraph() {
         .from('habit_logs')
         .select('date, completed')
         .eq('user_id', user.id)
-        .gte('date', firstDay.toISOString().split('T')[0])
-        .lte('date', lastDay.toISOString().split('T')[0])
+        .gte('date', getLocalDateString(firstDay))
+        .lte('date', getLocalDateString(lastDay))
 
       if (logsError) {
         console.error('Error fetching logs:', logsError)
@@ -73,7 +74,7 @@ export default function MonthlyGraph() {
 
       for (let day = 1; day <= daysInMonth; day++) {
         const date = new Date(now.getFullYear(), now.getMonth(), day)
-        const dateStr = date.toISOString().split('T')[0]
+        const dateStr = getLocalDateString(date)
         
         const dayLogs = logs?.filter(log => log.date === dateStr) || []
         const completed = dayLogs.filter(log => log.completed).length
@@ -124,19 +125,33 @@ export default function MonthlyGraph() {
 
   if (loading) {
     return (
-      <div className="bg-surface p-6 rounded-2xl border border-border-subtle">
-        <div className="flex items-center gap-2 mb-4">
-          <TrendingUp size={20} className="text-accent-primary" />
-          <h2 className="text-xl font-semibold">Monthly Progress</h2>
+      <div className="bg-surface/50 p-6 rounded-2xl border border-border-subtle h-full">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-background rounded-lg animate-pulse" />
+            <div className="h-6 w-40 bg-background rounded animate-pulse" />
+          </div>
+          <div className="h-4 w-28 bg-background rounded animate-pulse" />
         </div>
-        <div className="h-72 bg-background/30 rounded-lg animate-pulse" />
+        <div className="h-64 bg-background/50 rounded-xl animate-pulse" />
         <div className="mt-4 pt-4 border-t border-border-subtle grid grid-cols-3 gap-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="text-center animate-pulse">
-              <div className="h-8 bg-background rounded w-16 mx-auto mb-2" />
-              <div className="h-3 bg-background rounded w-20 mx-auto" />
+          {[1, 2, 3].map(i => (
+            <div key={i} className="text-center">
+              <div className="h-8 w-12 bg-background rounded mx-auto mb-2 animate-pulse" />
+              <div className="h-3 w-20 bg-background rounded mx-auto animate-pulse" />
             </div>
           ))}
+        </div>
+        <div className="mt-4 pt-4 border-t border-border-subtle">
+          <div className="flex gap-1 justify-center">
+            {Array.from({ length: 20 }).map((_, i) => (
+              <div key={i} className="flex flex-col gap-1">
+                {Array.from({ length: 7 }).map((_, j) => (
+                  <div key={j} className="w-[10px] h-[10px] bg-background rounded-sm animate-pulse" />
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     )
@@ -163,7 +178,7 @@ export default function MonthlyGraph() {
   }
 
   return (
-    <div className="bg-surface p-6 rounded-2xl border border-border-subtle">
+    <div className="bg-surface p-6 rounded-2xl border border-border-subtle animate-in fade-in zoom-in-95 slide-in-from-bottom-6 duration-700 ease-out" style={{ zIndex: 1 }}>
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <TrendingUp size={20} className="text-accent-primary" />
@@ -268,7 +283,7 @@ function YearHeatmapInline() {
         .from('habit_logs')
         .select('date, completed')
         .eq('user_id', user.id)
-        .gte('date', startOfYear.toISOString().split('T')[0])
+        .gte('date', getLocalDateString(startOfYear))
         .eq('completed', true)
 
       const dataMap = new Map<string, { count: number; level: 0 | 1 | 2 | 3 | 4 }>()
@@ -355,7 +370,7 @@ function YearHeatmapInline() {
                 return <div key={dayIndex} className="w-[10px] h-[10px]" />
               }
               
-              const dateStr = date.toISOString().split('T')[0]
+              const dateStr = getLocalDateString(date)
               const dayData = heatmapData.get(dateStr)
               const level = dayData?.level || 0
               const count = dayData?.count || 0
@@ -379,7 +394,7 @@ function YearHeatmapInline() {
       {/* Tooltip */}
       {hoveredDay && (
         <div 
-          className="fixed z-50 bg-surface border border-border-subtle rounded-lg px-3 py-2 shadow-xl pointer-events-none"
+          className="fixed z-10 bg-surface border border-border-subtle rounded-lg px-3 py-2 shadow-xl pointer-events-none"
           style={{ 
             left: hoveredDay.x - 60, 
             top: hoveredDay.y - 55,

@@ -1,9 +1,8 @@
 'use client'
 
-import Image from 'next/image'
 import { useEffect, useState } from 'react'
 
-const MINIMUM_DISPLAY_TIME = 2000 // 1 second minimum display
+const MINIMUM_DISPLAY_TIME = 1800
 
 const slokas = [
   { sanskrit: '॥ योगः कर्मसु कौशलम् ॥', meaning: 'Excellence in action is Yoga' },
@@ -13,168 +12,107 @@ const slokas = [
   { sanskrit: '॥ तमसो मा ज्योतिर्गमय ॥', meaning: 'Lead me from darkness to light' },
   { sanskrit: '॥ ॐ शान्तिः शान्तिः शान्तिः ॥', meaning: 'Om Peace Peace Peace' },
   { sanskrit: '॥ वसुधैव कुटुम्बकम् ॥', meaning: 'The world is one family' },
-  { sanskrit: '॥ आत्मनो मोक्षार्थम् ॥', meaning: 'For the liberation of the self' },
   { sanskrit: '॥ धर्मो रक्षति रक्षितः ॥', meaning: 'Dharma protects those who protect it' },
   { sanskrit: '॥ विद्या ददाति विनयम् ॥', meaning: 'Knowledge gives humility' },
 ]
 
-const animationStyles = ['pulse', 'spinner', 'dots', 'glow', 'progress', 'float', 'breathe', 'zen']
-
 export default function LoadingScreen() {
   const [mounted, setMounted] = useState(false)
-  const [style, setStyle] = useState<string>('')
   const [sloka, setSloka] = useState({ sanskrit: '', meaning: '' })
   const [isVisible, setIsVisible] = useState(true)
+  const [fadeOut, setFadeOut] = useState(false)
 
   useEffect(() => {
-    // Only set random values on client side after mount
-    const randomStyle = animationStyles[Math.floor(Math.random() * animationStyles.length)]
     const randomSloka = slokas[Math.floor(Math.random() * slokas.length)]
-    setStyle(randomStyle)
     setSloka(randomSloka)
     setMounted(true)
 
-    // Minimum display time
     const timer = setTimeout(() => {
-      setIsVisible(false)
+      setFadeOut(true)
+      setTimeout(() => setIsVisible(false), 400)
     }, MINIMUM_DISPLAY_TIME)
 
     return () => clearTimeout(timer)
   }, [])
 
-  // Don't render anything until mounted (prevents hydration mismatch)
-  if (!mounted) {
-    return (
-      <div className="fixed inset-0 z-[100] bg-background flex flex-col items-center justify-center">
-        <Image src="/Logo/logo.svg" alt="Sadhana" width={80} height={80} className="animate-pulse" />
-      </div>
-    )
-  }
-
-  if (!isVisible) return null
+  if (!mounted || !isVisible) return null
 
   return (
-    <div className="fixed inset-0 z-[100] bg-background flex flex-col items-center justify-center">
-      {/* Style 1: Minimal Pulse */}
-      {style === 'pulse' && (
-        <div className="flex flex-col items-center gap-8">
-          <Image src="/Logo/logo.svg" alt="Sadhana" width={80} height={80} className="animate-pulse" />
-          <div className="text-center">
-            <p className="text-orange-400 text-xl">{sloka.sanskrit}</p>
-            <p className="text-foreground-muted text-sm mt-2">{sloka.meaning}</p>
+    <div className={`fixed inset-0 z-[100] bg-[#0a0a0b] flex items-center justify-center transition-all duration-400 ${fadeOut ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
+      {/* Ambient glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-[var(--accent-primary)]/8 via-transparent to-transparent rounded-full blur-3xl" />
+      
+      <div className="relative flex flex-col items-center">
+        {/* Logo Mark */}
+        <div className="relative mb-10">
+          {/* Outer rotating ring */}
+          <svg className="w-24 h-24 animate-spin-slow" viewBox="0 0 100 100">
+            <circle
+              cx="50"
+              cy="50"
+              r="45"
+              fill="none"
+              stroke="url(#gradient)"
+              strokeWidth="1"
+              strokeDasharray="8 12"
+              strokeLinecap="round"
+            />
+            <defs>
+              <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="var(--accent-primary)" stopOpacity="0.8" />
+                <stop offset="50%" stopColor="#a855f7" stopOpacity="0.5" />
+                <stop offset="100%" stopColor="var(--accent-primary)" stopOpacity="0.2" />
+              </linearGradient>
+            </defs>
+          </svg>
+          
+          {/* Center content */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-3xl font-bold text-[var(--accent-primary)]">स</div>
           </div>
         </div>
-      )}
 
-      {/* Style 2: Spinner Ring */}
-      {style === 'spinner' && (
-        <div className="flex flex-col items-center gap-8">
-          <div className="relative">
-            <div className="absolute -inset-5 border-2 border-transparent border-t-orange-500 rounded-full animate-spin" />
-            <Image src="/Logo/logo.svg" alt="Sadhana" width={80} height={80} />
-          </div>
-          <div className="text-center">
-            <p className="text-orange-400 text-xl">{sloka.sanskrit}</p>
-            <p className="text-foreground-muted text-sm mt-2">{sloka.meaning}</p>
-          </div>
+        {/* Brand */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-light tracking-[0.2em] text-white/90">
+            SADHANA
+          </h1>
+          <div className="w-12 h-[1px] bg-gradient-to-r from-transparent via-[var(--accent-primary)] to-transparent mx-auto mt-3" />
         </div>
-      )}
 
-      {/* Style 3: Dots Loading */}
-      {style === 'dots' && (
-        <div className="flex flex-col items-center gap-6">
-          <Image src="/Logo/logo.svg" alt="Sadhana" width={80} height={80} />
-          <div className="flex gap-2">
-            <div className="w-2.5 h-2.5 bg-orange-500 rounded-full animate-bounce" />
-            <div className="w-2.5 h-2.5 bg-orange-500 rounded-full animate-bounce [animation-delay:150ms]" />
-            <div className="w-2.5 h-2.5 bg-orange-500 rounded-full animate-bounce [animation-delay:300ms]" />
-          </div>
-          <div className="text-center">
-            <p className="text-orange-400 text-xl">{sloka.sanskrit}</p>
-            <p className="text-foreground-muted text-sm mt-2">{sloka.meaning}</p>
-          </div>
+        {/* Sanskrit Sloka */}
+        <div className="text-center max-w-md px-6">
+          <p className="text-orange-400/90 text-xl font-medium tracking-wide">
+            {sloka.sanskrit}
+          </p>
+          <p className="text-white/40 text-sm mt-3 font-light">
+            {sloka.meaning}
+          </p>
         </div>
-      )}
 
-      {/* Style 4: Gradient Glow */}
-      {style === 'glow' && (
-        <div className="flex flex-col items-center gap-8 relative">
-          <div className="absolute inset-0 -m-20 bg-gradient-to-br from-orange-500/10 via-purple-500/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" />
-          <div className="relative">
-            <div className="absolute -inset-8 bg-orange-500/20 rounded-full blur-xl animate-pulse" />
-            <Image src="/Logo/logo.svg" alt="Sadhana" width={80} height={80} className="relative z-10" />
-          </div>
-          <div className="text-center relative z-10">
-            <p className="text-orange-400 text-xl">{sloka.sanskrit}</p>
-            <p className="text-foreground-muted text-sm mt-2">{sloka.meaning}</p>
-          </div>
+        {/* Minimal loading bar */}
+        <div className="mt-12 w-32 h-[2px] bg-white/10 rounded-full overflow-hidden">
+          <div className="h-full bg-gradient-to-r from-[var(--accent-primary)] to-purple-500 rounded-full animate-loading-bar" />
         </div>
-      )}
+      </div>
 
-      {/* Style 5: Progress Bar */}
-      {style === 'progress' && (
-        <div className="flex flex-col items-center gap-6">
-          <Image src="/Logo/logo.svg" alt="Sadhana" width={80} height={80} />
-          <div className="w-56 h-1.5 bg-surface rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-orange-500 to-purple-500 rounded-full animate-progress" />
-          </div>
-          <div className="text-center">
-            <p className="text-orange-400 text-xl">{sloka.sanskrit}</p>
-            <p className="text-foreground-muted text-sm mt-2">{sloka.meaning}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Style 6: Floatin& (
-      {style === 'float' && (
-        <div className="animate-float flex flex-col items-center gap-6">
-          <Image src="/Logo/logo.svg" alt="Sadhana" width={80} height={80} />
-          <div className="text-3xl font-bold">Sadhana</div>
-          <div className="text-center">
-            <p className="text-orange-400">{sloka.sanskrit}</p>
-            <p className="text-foreground-muted text-sm mt-1">{sloka.meaning}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Style 7: Breathing Circle */}
-      {style === 'breathe' && (
-        <div className="flex flex-col items-center gap-6">
-          <div className="relative">
-            <div className="absolute -inset-10 border-2 border-orange-500/30 rounded-full animate-breathe-circle" />
-            <div className="absolute -inset-5 bg-orange-500/10 rounded-full animate-breathe-circle" />
-            <Image src="/Logo/logo.svg" alt="Sadhana" width={80} height={80} className="relative z-10" />
-          </div>
-          <div className="text-center mt-8">
-            <p className="text-foreground-muted text-xs uppercase tracking-[0.3em] mb-3">Breathe</p>
-            <p className="text-orange-400 text-xl">{sloka.sanskrit}</p>
-            <p className="text-foreground-muted text-sm mt-2">{sloka.meaning}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Style 8: Full Screen Zen */}
-      {style === 'zen' && (
-        <div className="flex flex-col items-center justify-center gap-8 relative w-full h-full">
-          <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-orange-950/20" />
-          <div className="absolute top-8 left-0 right-0 text-center">
-            <span className="text-foreground-muted text-xs tracking-[0.4em] uppercase">साधना</span>
-          </div>
-          <div className="relative z-10">
-            <div className="absolute -inset-16 bg-gradient-to-r from-orange-500/20 via-purple-500/20 to-orange-500/20 rounded-full blur-3xl animate-pulse" />
-            <Image src="/Logo/logo.svg" alt="Sadhana" width={100} height={100} className="relative z-10 animate-breathe" />
-          </div>
-          <div className="text-center z-10">
-            <p className="text-orange-400 text-2xl font-medium">{sloka.sanskrit}</p>
-            <p className="text-foreground-muted mt-3">{sloka.meaning}</p>
-          </div>
-          <div className="absolute bottom-8 flex gap-1.5">
-            {[0,1,2].map(i => (
-              <div key={i} className="w-2 h-2 bg-orange-500/50 rounded-full animate-pulse" style={{animationDelay: `${i * 200}ms`}} />
-            ))}
-          </div>
-        </div>
-      )}
+      <style jsx>{`
+        @keyframes spin-slow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+          animation: spin-slow 8s linear infinite;
+        }
+        @keyframes loading-bar {
+          0% { width: 0%; margin-left: 0%; }
+          50% { width: 60%; margin-left: 20%; }
+          100% { width: 0%; margin-left: 100%; }
+        }
+        .animate-loading-bar {
+          animation: loading-bar 1.5s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   )
 }

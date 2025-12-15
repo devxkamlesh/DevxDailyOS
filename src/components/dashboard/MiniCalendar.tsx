@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Calendar, ChevronLeft, ChevronRight, TrendingUp, Flame, Target } from 'lucide-react'
 import Link from 'next/link'
+import { getLocalDateString } from '@/lib/date-utils'
 
 interface DayData {
   date: string
@@ -34,8 +35,8 @@ export default function MiniCalendar() {
 
       const year = currentDate.getFullYear()
       const month = currentDate.getMonth()
-      const firstDay = new Date(year, month, 1).toISOString().split('T')[0]
-      const lastDay = new Date(year, month + 1, 0).toISOString().split('T')[0]
+      const firstDay = getLocalDateString(new Date(year, month, 1))
+      const lastDay = getLocalDateString(new Date(year, month + 1, 0))
 
       // Fetch habits count
       const { data: habits } = await supabase
@@ -84,7 +85,7 @@ export default function MiniCalendar() {
       for (let i = 0; i < 365; i++) {
         const checkDate = new Date(today)
         checkDate.setDate(today.getDate() - i)
-        const dateStr = checkDate.toISOString().split('T')[0]
+        const dateStr = getLocalDateString(checkDate)
         const dayData = dataMap.get(dateStr)
         
         if (dayData && dayData.percentage >= 80) {
@@ -244,14 +245,14 @@ export default function MiniCalendar() {
               return <div key={`empty-${index}`} className="aspect-square" />
             }
 
-            const dateStr = new Date(
+            const dateStr = getLocalDateString(new Date(
               currentDate.getFullYear(),
               currentDate.getMonth(),
               day
-            ).toISOString().split('T')[0]
+            ))
             
             const dayData = calendarData.get(dateStr)
-            const isToday = dateStr === new Date().toISOString().split('T')[0]
+            const isToday = dateStr === getLocalDateString()
             const percentage = dayData?.percentage || 0
 
             return (

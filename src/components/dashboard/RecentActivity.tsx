@@ -155,15 +155,23 @@ export default function RecentActivity() {
   }
 
   return (
-    <div className="bg-surface p-6 rounded-2xl border border-border-subtle">
+    <div className="bg-surface p-6 rounded-2xl border border-border-subtle animate-in fade-in zoom-in-95 slide-in-from-bottom-6 duration-700 ease-out" style={{ zIndex: 1 }}>
       <div className="flex items-center gap-2 mb-4">
         <Clock size={20} className="text-accent-primary" />
         <h2 className="text-lg font-semibold">Recent Activity</h2>
       </div>
 
       {loading ? (
-        <div className="text-center py-4 text-foreground-muted text-sm">
-          Loading...
+        <div className="space-y-3">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="flex items-start gap-3 p-3 bg-background/50 rounded-lg">
+              <div className="w-9 h-9 bg-background rounded-lg animate-pulse" />
+              <div className="flex-1">
+                <div className="h-4 w-32 bg-background rounded animate-pulse mb-2" />
+                <div className="h-3 w-16 bg-background rounded animate-pulse" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : activities.length === 0 ? (
         <div className="text-center py-4">

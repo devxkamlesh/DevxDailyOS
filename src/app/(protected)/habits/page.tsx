@@ -8,6 +8,7 @@ import { Plus, X, Sunrise, Briefcase, Moon, Heart, Target, Edit2, Trash2, Eye, E
 import { LucideIcon } from 'lucide-react'
 import { useSystemSettings } from '@/lib/useSystemSettings'
 import { useToast } from '@/components/ui/Toast'
+import DateManipulationBlocker from '@/components/ui/DateManipulationBlocker'
 
 const categories = ['morning', 'work', 'night', 'health', 'focus'] as const
 const categoryIcons: Record<string, LucideIcon> = {
@@ -310,6 +311,7 @@ export default function HabitsPage() {
   const currentAnalytics = analytics[analyticsView === 'week' ? 'weekly' : analyticsView === 'month' ? 'monthly' : 'yearly']
 
   return (
+    <DateManipulationBlocker>
     <div className="space-y-8">
       {/* Header Section */}
       <div className="bg-gradient-to-br from-accent-primary/10 to-accent-primary/5 rounded-2xl p-6 border border-accent-primary/20">
@@ -673,7 +675,9 @@ export default function HabitsPage() {
                         /* Single action button for non-time numeric habits */
                         <button
                           onClick={async () => {
-                            const today = new Date().toISOString().split('T')[0]
+                            // Use IST timezone
+                            const { getLocalDateString } = await import('@/lib/date-utils')
+                            const today = getLocalDateString()
                             const { data: { user } } = await supabase.auth.getUser()
                             if (!user) return
 
@@ -716,7 +720,9 @@ export default function HabitsPage() {
                   ) : (
                     <button
                       onClick={async () => {
-                        const today = new Date().toISOString().split('T')[0]
+                        // Use IST timezone
+                        const { getLocalDateString } = await import('@/lib/date-utils')
+                        const today = getLocalDateString()
                         const { data: { user } } = await supabase.auth.getUser()
                         if (!user) return
 
@@ -1054,5 +1060,6 @@ export default function HabitsPage() {
         </div>
       )}
     </div>
+    </DateManipulationBlocker>
   )
 }

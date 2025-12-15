@@ -57,8 +57,30 @@ export default function QuickAddSection() {
     }
   }
 
+  const [mounted, setMounted] = useState(false)
+
+  useState(() => {
+    setMounted(true)
+  })
+
+  if (!mounted) {
+    return (
+      <div className="bg-surface/50 p-6 rounded-2xl border border-border-subtle">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 bg-background rounded-lg animate-pulse" />
+          <div className="h-5 w-28 bg-background rounded animate-pulse" />
+        </div>
+        <div className="space-y-3">
+          <div className="h-10 bg-background rounded-lg animate-pulse" />
+          <div className="h-10 bg-background rounded-lg animate-pulse" />
+          <div className="h-4 w-24 bg-background rounded mx-auto animate-pulse" />
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="bg-surface p-6 rounded-2xl border border-border-subtle">
+    <div className="bg-surface p-6 rounded-2xl border border-border-subtle animate-in fade-in zoom-in-95 slide-in-from-bottom-6 duration-700 ease-out" style={{ zIndex: 1 }}>
       <div className="flex items-center gap-2 mb-4">
         <Zap size={20} className="text-yellow-400" />
         <h2 className="text-lg font-semibold">Quick Capture</h2>

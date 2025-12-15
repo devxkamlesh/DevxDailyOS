@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Trophy, Award, Zap, Target, Star, Crown, Flame, CheckCircle2, Lock, Coins, Gift } from 'lucide-react'
 import { ACHIEVEMENTS, getClaimedAchievements, claimAchievement, updateUserStreak } from '@/lib/achievements'
+import DateManipulationBlocker from '@/components/ui/DateManipulationBlocker'
 
 interface Achievement {
   id: string
@@ -80,17 +81,20 @@ export default function AchievementsPage() {
 
       const totalCompletions = logs.length
       
-      // Calculate streaks
+      // Calculate streaks using IST timezone
       const uniqueDates = [...new Set(logs.map(l => l.date))].sort().reverse()
       let currentStreak = 0
       let longestStreak = 0
       let tempStreak = 0
       
+      // Import getLocalDateString for IST timezone
+      const { getLocalDateString } = await import('@/lib/date-utils')
+      
       const today = new Date()
       for (let i = 0; i < uniqueDates.length; i++) {
         const checkDate = new Date(today)
         checkDate.setDate(checkDate.getDate() - i)
-        const checkDateStr = checkDate.toISOString().split('T')[0]
+        const checkDateStr = getLocalDateString(checkDate)
         
         if (uniqueDates.includes(checkDateStr)) {
           tempStreak++
@@ -241,6 +245,7 @@ export default function AchievementsPage() {
   ]
 
   return (
+    <DateManipulationBlocker>
     <div className="space-y-6">
       {/* Header */}
       <div>
@@ -401,5 +406,6 @@ export default function AchievementsPage() {
         </>
       )}
     </div>
+    </DateManipulationBlocker>
   )
 }

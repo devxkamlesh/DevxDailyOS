@@ -11,10 +11,10 @@ interface StatCardProps {
   suffix?: string
 }
 
-// Animated number component
+// Simple animated number with fade effect
 function AnimatedNumber({ value }: { value: number }) {
   const [displayValue, setDisplayValue] = useState(value)
-  const [animState, setAnimState] = useState<'idle' | 'exit' | 'enter'>('idle')
+  const [isUpdating, setIsUpdating] = useState(false)
   const isFirstRender = useRef(true)
 
   useEffect(() => {
@@ -25,37 +25,19 @@ function AnimatedNumber({ value }: { value: number }) {
     }
 
     if (value !== displayValue) {
-      setAnimState('exit')
+      setIsUpdating(true)
       
-      const exitTimer = setTimeout(() => {
+      const timer = setTimeout(() => {
         setDisplayValue(value)
-        setAnimState('enter')
+        setIsUpdating(false)
       }, 150)
       
-      const enterTimer = setTimeout(() => {
-        setAnimState('idle')
-      }, 400)
-      
-      return () => {
-        clearTimeout(exitTimer)
-        clearTimeout(enterTimer)
-      }
+      return () => clearTimeout(timer)
     }
   }, [value, displayValue])
 
-  const getAnimationClass = () => {
-    switch (animState) {
-      case 'exit':
-        return 'transform -translate-y-4 opacity-0'
-      case 'enter':
-        return 'transform translate-y-0 opacity-100'
-      default:
-        return 'transform translate-y-0 opacity-100'
-    }
-  }
-
   return (
-    <span className={`inline-block transition-all duration-200 ease-out ${getAnimationClass()}`}>
+    <span className={`transition-opacity duration-150 ${isUpdating ? 'opacity-50' : 'opacity-100'}`}>
       {displayValue}
     </span>
   )
@@ -67,10 +49,10 @@ export default function StatCard({ label, value, icon: Icon, animatedNumber, suf
     return (
       <div className="bg-surface p-6 rounded-2xl border border-border-subtle hover:border-accent-primary/30 transition">
         <div className="text-foreground-muted text-sm mb-2">{label}</div>
-        <div className="text-3xl font-semibold flex items-center gap-2">
-          <span className="inline-flex items-baseline gap-1">
+        <div className="text-3xl font-semibold flex items-center justify-between">
+          <span className="flex items-baseline">
             <AnimatedNumber value={animatedNumber} />
-            {suffix && <span className="text-foreground-muted">{suffix}</span>}
+            {suffix && <span className="text-foreground-muted text-xl ml-1">{suffix}</span>}
           </span>
           {Icon && <Icon size={28} className="text-accent-primary flex-shrink-0" />}
         </div>

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client'
 import { addCoinsWithRetry, spendCoinsWithRetry } from '@/lib/user-rewards-safe'
+import { getLocalDateString } from '@/lib/date-utils'
 
 /**
  * FIXED Coin System Utility - Prevents Exploits & Concurrent Data Corruption
@@ -36,7 +37,7 @@ interface CoinTransactionResult {
 export async function awardHabitCoins(
   userId: string,
   habitId: string,
-  date: string = new Date().toISOString().split('T')[0]
+  date: string = getLocalDateString()
 ): Promise<CoinTransactionResult> {
   try {
     const supabase = createClient()
@@ -112,7 +113,7 @@ export async function awardHabitCoins(
 export async function deductHabitCoins(
   userId: string,
   habitId: string,
-  date: string = new Date().toISOString().split('T')[0]
+  date: string = getLocalDateString()
 ): Promise<CoinTransactionResult> {
   try {
     const supabase = createClient()
@@ -184,7 +185,7 @@ export async function deductHabitCoins(
 export async function checkCoinsAwarded(
   userId: string,
   habitId: string,
-  date: string = new Date().toISOString().split('T')[0]
+  date: string = getLocalDateString()
 ): Promise<boolean> {
   try {
     const supabase = createClient()

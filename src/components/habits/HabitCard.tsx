@@ -42,7 +42,9 @@ export default function HabitCard({ habit, log, onUpdate }: HabitCardProps) {
     }
 
     setLoading(true)
-    const today = new Date().toISOString().split('T')[0]
+    // Use IST timezone
+    const { getLocalDateString } = await import('@/lib/date-utils')
+    const today = getLocalDateString()
     
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -82,7 +84,9 @@ export default function HabitCard({ habit, log, onUpdate }: HabitCardProps) {
     if (newValue < 0) return
     setLoading(true)
     setValue(newValue)
-    const today = new Date().toISOString().split('T')[0]
+    // Use IST timezone
+    const { getLocalDateString } = await import('@/lib/date-utils')
+    const today = getLocalDateString()
     
     try {
       const { data: { user } } = await supabase.auth.getUser()

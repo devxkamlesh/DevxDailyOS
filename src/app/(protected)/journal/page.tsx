@@ -169,37 +169,48 @@ export default function JournalPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <BookOpen className="text-accent-primary" />
-            Daily Journal
-          </h1>
-          <p className="text-foreground-muted">Reflect on your day and track your mood</p>
+      {/* Header - Styled like dashboard */}
+      <div className="flex items-center justify-between flex-wrap gap-4 p-4 bg-gradient-to-r from-[var(--surface)]/80 to-[var(--surface)]/40 rounded-2xl border border-[var(--border-subtle)] backdrop-blur-sm">
+        <div className="flex items-center gap-4">
+          {/* Journal Icon */}
+          <div className="w-12 h-12 rounded-xl bg-[var(--background)] flex items-center justify-center text-purple-500">
+            <BookOpen size={24} />
+          </div>
+          
+          {/* Text Content */}
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+              Daily <span className="text-[var(--accent-primary)]">Journal</span>
+            </h1>
+            <div className="flex items-center gap-2 text-[var(--foreground-muted)] text-sm mt-0.5">
+              <Sparkles size={14} className="text-purple-400" />
+              <span>Reflect on your day and track your mood</span>
+            </div>
+          </div>
         </div>
+        
         {canEdit ? (
           <button
             onClick={saveEntry}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-accent-primary text-white rounded-lg hover:opacity-90 transition disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-[var(--accent-primary)] text-white rounded-xl hover:opacity-90 transition disabled:opacity-50 font-medium text-sm"
           >
             {saving ? (
               <>Saving...</>
             ) : saved ? (
               <>
-                <Sparkles size={18} />
+                <Sparkles size={16} />
                 Saved!
               </>
             ) : (
               <>
-                <Save size={18} />
+                <Save size={16} />
                 Save Entry
               </>
             )}
           </button>
         ) : (
-          <span className="text-sm text-foreground-muted px-4 py-2 bg-surface rounded-lg border border-border-subtle">
+          <span className="text-sm text-[var(--foreground-muted)] px-4 py-2 bg-[var(--background)] rounded-xl border border-[var(--border-subtle)]">
             View Only
           </span>
         )}

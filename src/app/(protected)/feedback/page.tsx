@@ -96,10 +96,43 @@ export default function FeedbackPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-8 w-48 bg-[var(--surface)] rounded-lg" />
-        <div className="grid grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <div key={i} className="h-24 bg-[var(--surface)] rounded-xl" />)}
+      <div className="space-y-6">
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between h-[60px]">
+          <div>
+            <div className="h-8 w-56 bg-[var(--surface)] rounded-lg animate-pulse mb-2" />
+            <div className="h-4 w-72 bg-[var(--surface)] rounded animate-pulse" />
+          </div>
+          <div className="h-10 w-36 bg-[var(--surface)] rounded-xl animate-pulse" />
+        </div>
+        {/* Stats skeleton */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border-subtle)] h-[76px]">
+              <div className="h-8 w-12 bg-[var(--background)] rounded animate-pulse mb-1" />
+              <div className="h-3 w-20 bg-[var(--background)] rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
+        {/* Filter skeleton */}
+        <div className="flex items-center gap-2 h-[40px]">
+          <div className="h-10 w-32 bg-[var(--surface)] rounded-lg animate-pulse" />
+        </div>
+        {/* List skeleton */}
+        <div className="space-y-3">
+          {[1,2,3].map(i => (
+            <div key={i} className="bg-[var(--surface)] rounded-xl p-5 border border-[var(--border-subtle)] h-[140px]">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-[var(--background)] rounded-lg animate-pulse" />
+                <div className="flex-1">
+                  <div className="h-5 w-48 bg-[var(--background)] rounded animate-pulse mb-2" />
+                  <div className="h-4 w-32 bg-[var(--background)] rounded animate-pulse" />
+                </div>
+              </div>
+              <div className="h-4 w-full bg-[var(--background)] rounded animate-pulse mt-4" />
+              <div className="h-4 w-3/4 bg-[var(--background)] rounded animate-pulse mt-2" />
+            </div>
+          ))}
         </div>
       </div>
     )
@@ -108,7 +141,7 @@ export default function FeedbackPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between h-[60px]">
         <div>
           <h1 className="text-2xl font-bold mb-1">Feedback & Requests</h1>
           <p className="text-[var(--foreground-muted)]">Submit bugs, feature requests, or suggestions</p>
@@ -124,26 +157,26 @@ export default function FeedbackPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border-subtle)]">
+        <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border-subtle)] h-[76px]">
           <p className="text-2xl font-bold">{stats.total}</p>
           <p className="text-xs text-[var(--foreground-muted)]">Total Submitted</p>
         </div>
-        <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border-subtle)]">
+        <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border-subtle)] h-[76px]">
           <p className="text-2xl font-bold text-gray-400">{stats.pending}</p>
           <p className="text-xs text-[var(--foreground-muted)]">Pending</p>
         </div>
-        <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border-subtle)]">
+        <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border-subtle)] h-[76px]">
           <p className="text-2xl font-bold text-orange-400">{stats.inProgress}</p>
           <p className="text-xs text-[var(--foreground-muted)]">In Progress</p>
         </div>
-        <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border-subtle)]">
+        <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border-subtle)] h-[76px]">
           <p className="text-2xl font-bold text-green-400">{stats.completed}</p>
           <p className="text-xs text-[var(--foreground-muted)]">Completed</p>
         </div>
       </div>
 
       {/* Filter */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 h-[40px]">
         <Filter size={16} className="text-[var(--foreground-muted)]" />
         <select
           value={filterStatus}

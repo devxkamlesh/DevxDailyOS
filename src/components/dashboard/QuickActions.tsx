@@ -1,9 +1,17 @@
 'use client'
 
 import Link from 'next/link'
-import { Calendar, Target, Zap, Trophy, BookOpen, Camera } from 'lucide-react'
+import { Calendar, Target, Zap, Trophy, BookOpen, Camera, BarChart3 } from 'lucide-react'
+
+import { useState, useEffect } from 'react'
 
 export default function QuickActions() {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const actions = [
     {
       icon: Target,
@@ -41,16 +49,32 @@ export default function QuickActions() {
       bg: 'bg-yellow-500/10 hover:bg-yellow-500/20'
     },
     {
-      icon: Camera,
-      label: 'Instagram',
-      href: '/instagram',
-      color: 'text-pink-400',
-      bg: 'bg-pink-500/10 hover:bg-pink-500/20'
+      icon: BarChart3,
+      label: 'Analytics',
+      href: '/analytics',
+      color: 'text-indigo-400',
+      bg: 'bg-indigo-500/10 hover:bg-indigo-500/20'
     }
   ]
 
+  if (!mounted) {
+    return (
+      <div className="bg-surface/50 p-6 rounded-2xl border border-border-subtle">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 bg-background rounded-lg animate-pulse" />
+          <div className="h-5 w-28 bg-background rounded animate-pulse" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <div key={i} className="h-11 bg-background/50 rounded-lg animate-pulse" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="bg-surface p-6 rounded-2xl border border-border-subtle">
+    <div className="bg-surface p-6 rounded-2xl border border-border-subtle animate-in fade-in zoom-in-95 slide-in-from-bottom-6 duration-700 ease-out" style={{ zIndex: 1 }}>
       <div className="flex items-center gap-2 mb-4">
         <Zap size={20} className="text-accent-primary" />
         <h2 className="text-lg font-semibold">Quick Actions</h2>

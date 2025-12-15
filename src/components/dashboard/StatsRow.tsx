@@ -4,8 +4,12 @@ import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import StatCard from '@/components/ui/StatCard'
 import { CheckCircle2, Target, Flame } from 'lucide-react'
+import { getLocalDateString } from '@/lib/date-utils'
+import { useMidnightResetListener } from '@/hooks/useMidnightReset'
+import { useDate, useDateChangeListener } from '@/contexts/DateContext'
 
 export default function StatsRow() {
+  const { selectedDate } = useDate()
   const [stats, setStats] = useState({
     habitsCompleted: 0,
     habitsTotal: 0,
@@ -26,7 +30,8 @@ export default function StatsRow() {
           return
         }
 
-        const today = new Date().toISOString().split('T')[0]
+        // Use selectedDate from context instead of always today
+        const today = selectedDate
         
         // Fetch habits and today's logs
         const [habitsRes, logsRes] = await Promise.all([
@@ -78,7 +83,7 @@ export default function StatsRow() {
           for (let i = 0; i < uniqueDates.length; i++) {
             const checkDate = new Date(todayDate)
             checkDate.setDate(checkDate.getDate() - i)
-            const checkDateStr = checkDate.toISOString().split('T')[0]
+            const checkDateStr = getLocalDateString(checkDate)
             
             if (uniqueDates.includes(checkDateStr)) {
               streak++
@@ -113,7 +118,7 @@ export default function StatsRow() {
     }
     
     return () => { mounted = false }
-  }, [])
+  }, [selectedDate])
 
   useEffect(() => {
     fetchStats()
@@ -133,12 +138,27 @@ export default function StatsRow() {
     }
   }, [fetchStats])
 
+  // Auto-refresh on midnight reset (12:00 AM IST)
+  useMidnightResetListener(() => {
+    console.log('[StatsRow] Midnight reset - refreshing stats')
+    fetchStats()
+  })
+
+  // Refresh when date changes via DateNavigator
+  useDateChangeListener(() => {
+    setLoading(true)
+    fetchStats()
+  })
+
   if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[1, 2, 3].map(i => (
-          <div key={i} className="bg-surface p-6 rounded-2xl border border-border-subtle">
-            <div className="text-center text-foreground-muted">Loading...</div>
+          <div key={i} className="bg-surface/50 p-6 rounded-2xl border border-border-subtle">
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-4 w-20 bg-background rounded animate-pulse" />
+              <div className="h-10 w-28 bg-background rounded-lg animate-pulse" />
+            </div>
           </div>
         ))}
       </div>
@@ -146,7 +166,7 @@ export default function StatsRow() {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in zoom-in-95 slide-in-from-bottom-6 duration-700 ease-out" style={{ zIndex: 1 }}>
       <StatCard 
         label="Habits Done" 
         animatedNumber={stats.habitsCompleted}

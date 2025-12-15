@@ -1403,10 +1403,18 @@ CREATE TABLE user_settings (
   start_of_week text DEFAULT 'monday',
   theme text DEFAULT 'dark',
   
+  -- Google Calendar Integration
+  google_calendar_id text,
+  google_api_key text,
+  
   -- Timestamps
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
+
+-- Add columns if table already exists
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS google_calendar_id text;
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS google_api_key text;
 
 COMMENT ON TABLE user_settings IS 'User application settings';
 

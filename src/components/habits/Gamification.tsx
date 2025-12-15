@@ -68,7 +68,8 @@ export default function Gamification() {
 
     const totalCompletions = logs.length
     
-    // Calculate streaks
+    // Calculate streaks using IST timezone
+    const { getLocalDateString } = await import('@/lib/date-utils')
     const uniqueDates = [...new Set(logs.map(l => l.date))].sort().reverse()
     let currentStreak = 0
     let longestStreak = 0
@@ -78,7 +79,7 @@ export default function Gamification() {
     for (let i = 0; i < uniqueDates.length; i++) {
       const checkDate = new Date(today)
       checkDate.setDate(checkDate.getDate() - i)
-      const checkDateStr = checkDate.toISOString().split('T')[0]
+      const checkDateStr = getLocalDateString(checkDate)
       
       if (uniqueDates.includes(checkDateStr)) {
         tempStreak++

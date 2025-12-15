@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client'
 import { updateXPWithRetry } from '@/lib/user-rewards-safe'
+import { getLocalDateString } from '@/lib/date-utils'
 
 /**
  * XP & Level System Utility with Optimistic Locking
@@ -86,7 +87,7 @@ export function getLevelProgress(xp: number): {
 export async function awardHabitXP(
   userId: string,
   habitId: string,
-  date: string = new Date().toISOString().split('T')[0]
+  date: string = getLocalDateString()
 ): Promise<XPTransactionResult> {
   try {
     const supabase = createClient()
@@ -171,7 +172,7 @@ export async function awardHabitXP(
 export async function deductHabitXP(
   userId: string,
   habitId: string,
-  date: string = new Date().toISOString().split('T')[0]
+  date: string = getLocalDateString()
 ): Promise<XPTransactionResult> {
   try {
     const supabase = createClient()

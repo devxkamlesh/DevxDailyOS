@@ -9,6 +9,7 @@ import {
   Volume2, VolumeX, ChevronRight, Sparkles, Maximize, Minimize
 } from 'lucide-react'
 import Link from 'next/link'
+import DateManipulationBlocker from '@/components/ui/DateManipulationBlocker'
 
 interface FocusHabit {
   id: string
@@ -134,7 +135,9 @@ export default function FocusPage() {
       .eq('target_unit', 'minutes')
 
     if (habits) {
-      const today = new Date().toISOString().split('T')[0]
+      // Use IST timezone for today
+      const { getLocalDateString } = await import('@/lib/date-utils')
+      const today = getLocalDateString()
       
       // Get today's habit logs for time values
       const { data: logs } = await supabase
@@ -174,7 +177,9 @@ export default function FocusPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const today = new Date().toISOString().split('T')[0]
+    // Use IST timezone for today
+    const { getLocalDateString } = await import('@/lib/date-utils')
+    const today = getLocalDateString()
     
     // Get today's focus sessions
     const { data: sessions } = await supabase
@@ -191,7 +196,7 @@ export default function FocusPage() {
       .eq('date', today)
       .eq('completed', true)
 
-    // Calculate streak
+    // Calculate streak using IST timezone
     const { data: recentLogs } = await supabase
       .from('habit_logs')
       .select('date, completed')
@@ -207,7 +212,7 @@ export default function FocusPage() {
       for (let i = 0; i < uniqueDates.length; i++) {
         const checkDate = new Date(todayDate)
         checkDate.setDate(checkDate.getDate() - i)
-        if (uniqueDates.includes(checkDate.toISOString().split('T')[0])) {
+        if (uniqueDates.includes(getLocalDateString(checkDate))) {
           streak++
         } else break
       }
@@ -241,7 +246,9 @@ export default function FocusPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const today = new Date().toISOString().split('T')[0]
+    // Use IST timezone for today
+    const { getLocalDateString } = await import('@/lib/date-utils')
+    const today = getLocalDateString()
     // Use habit's target time as session duration
     const sessionMinutes = selectedHabit.target_time
 
@@ -400,6 +407,7 @@ export default function FocusPage() {
 
 
   return (
+    <DateManipulationBlocker>
     <div 
       ref={containerRef}
       className={`space-y-6 ${isFullscreen ? 'fixed inset-0 z-50 bg-background p-6 overflow-auto' : ''}`}
@@ -825,5 +833,6 @@ export default function FocusPage() {
         </div>
       )}
     </div>
+    </DateManipulationBlocker>
   )
 }

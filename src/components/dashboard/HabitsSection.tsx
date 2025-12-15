@@ -7,6 +7,7 @@ import HabitCard from '@/components/habits/HabitCard'
 import SectionHeader from '@/components/ui/SectionHeader'
 import { Plus } from 'lucide-react'
 import Link from 'next/link'
+import { getLocalDateString } from '@/lib/date-utils'
 
 export default function HabitsSection() {
   const [habits, setHabits] = useState<Habit[]>([])
@@ -22,7 +23,7 @@ export default function HabitsSection() {
         return
       }
 
-      const today = new Date().toISOString().split('T')[0]
+      const today = getLocalDateString()
       
       const [habitsRes, logsRes] = await Promise.all([
         supabase.from('habits').select('*').eq('user_id', user.id).eq('is_active', true).order('created_at'),

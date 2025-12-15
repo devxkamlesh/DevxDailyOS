@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { TrendingUp, Target, Zap, Calendar, Star, Coins } from 'lucide-react'
 import { getLevelProgress } from '@/lib/xp'
+import { getLocalDateString, getLocalDateDaysAgo } from '@/lib/date-utils'
 
 export default function QuickStats() {
   const [stats, setStats] = useState({
@@ -32,8 +33,8 @@ export default function QuickStats() {
           return
         }
 
-        const today = new Date().toISOString().split('T')[0]
-        const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        const today = getLocalDateString()
+        const weekAgo = getLocalDateDaysAgo(7)
 
         // Fetch total active habits
         const { data: habits } = await supabase
@@ -78,10 +79,10 @@ export default function QuickStats() {
         let currentStreak = 0
         if (allLogs && allLogs.length > 0) {
           const dates = [...new Set(allLogs.map(log => log.date))].sort().reverse()
-          const todayStr = new Date().toISOString().split('T')[0]
+          const todayStr = getLocalDateString()
           
           for (let i = 0; i < dates.length; i++) {
-            const expectedDate = new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+            const expectedDate = getLocalDateDaysAgo(i)
             if (dates[i] === expectedDate) {
               currentStreak++
             } else {

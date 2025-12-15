@@ -19,34 +19,48 @@ export default function AnnouncementBanner() {
 
   useEffect(() => {
     const fetchAnnouncements = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
 
-      // Get active announcements
-      const { data: announcementsData } = await supabase
-        .from('announcements')
-        .select('*')
-        .eq('is_active', true)
-        .eq('show_on_dashboard', true)
-        .lte('start_date', new Date().toISOString())
-        .order('priority', { ascending: false })
+        // Get active announcements - simplified query
+        const { data: announcementsData, error } = await supabase
+          .from('announcements')
+          .select('*')
+          .eq('is_active', true)
+          .eq('show_on_dashboard', true)
+          .order('priority', { ascending: false })
 
-      // Get dismissed announcements
-      const { data: dismissals } = await supabase
-        .from('announcement_dismissals')
-        .select('announcement_id')
-        .eq('user_id', user.id)
+        if (error) {
+          console.error('Error fetching announcements:', error)
+          return
+        }
 
-      const dismissedSet = new Set(dismissals?.map(d => d.announcement_id) || [])
+        if (!announcementsData || announcementsData.length === 0) {
+          return
+        }
 
-      // Filter out expired and dismissed
-      const activeAnnouncements = (announcementsData || []).filter(a => {
-        if (dismissedSet.has(a.id)) return false
-        if (a.end_date && new Date(a.end_date) < new Date()) return false
-        return true
-      })
+        // Get dismissed announcements
+        const { data: dismissals } = await supabase
+          .from('announcement_dismissals')
+          .select('announcement_id')
+          .eq('user_id', user.id)
 
-      setAnnouncements(activeAnnouncements)
+        const dismissedSet = new Set(dismissals?.map(d => d.announcement_id) || [])
+
+        // Filter out expired and dismissed
+        const now = new Date()
+        const activeAnnouncements = announcementsData.filter(a => {
+          if (dismissedSet.has(a.id)) return false
+          if (a.start_date && new Date(a.start_date) > now) return false
+          if (a.end_date && new Date(a.end_date) < now) return false
+          return true
+        })
+
+        setAnnouncements(activeAnnouncements)
+      } catch (err) {
+        console.error('Announcement fetch error:', err)
+      }
     }
 
     fetchAnnouncements()
