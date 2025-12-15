@@ -91,9 +91,38 @@ export default function AdminFeedbackPage() {
     features: feedbacks.filter(f => f.type === 'feature').length
   }
 
+  // Skeleton for stats
+  const StatsSkeleton = () => (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border-subtle)] h-[76px]">
+          <div className="h-8 w-12 bg-[var(--background)] rounded animate-pulse mb-1" />
+          <div className="h-3 w-16 bg-[var(--background)] rounded animate-pulse" />
+        </div>
+      ))}
+    </div>
+  )
+
+  // Skeleton for table
+  const TableSkeleton = () => (
+    <div className="bg-[var(--surface)] rounded-xl border border-[var(--border-subtle)] overflow-hidden">
+      <div className="bg-[var(--background)] p-4 h-[52px]" />
+      {[...Array(5)].map((_, i) => (
+        <div key={i} className="border-t border-[var(--border-subtle)] p-4 h-[73px] flex items-center gap-4">
+          <div className="flex-1 space-y-2">
+            <div className="h-4 w-48 bg-[var(--background)] rounded animate-pulse" />
+            <div className="h-3 w-32 bg-[var(--background)] rounded animate-pulse" />
+          </div>
+          <div className="h-4 w-16 bg-[var(--background)] rounded animate-pulse" />
+          <div className="h-4 w-20 bg-[var(--background)] rounded animate-pulse" />
+        </div>
+      ))}
+    </div>
+  )
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between h-[60px]">
         <div>
           <h1 className="text-2xl font-bold mb-1">Feedback Management</h1>
           <p className="text-[var(--foreground-muted)]">Review and respond to user feedback</p>
@@ -101,24 +130,26 @@ export default function AdminFeedbackPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border-subtle)]">
-          <p className="text-2xl font-bold">{stats.total}</p>
-          <p className="text-xs text-[var(--foreground-muted)]">Total</p>
+      {loading ? <StatsSkeleton /> : (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border-subtle)] h-[76px]">
+            <p className="text-2xl font-bold">{stats.total}</p>
+            <p className="text-xs text-[var(--foreground-muted)]">Total</p>
+          </div>
+          <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border-subtle)] h-[76px]">
+            <p className="text-2xl font-bold text-yellow-400">{stats.pending}</p>
+            <p className="text-xs text-[var(--foreground-muted)]">Pending</p>
+          </div>
+          <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border-subtle)] h-[76px]">
+            <p className="text-2xl font-bold text-red-400">{stats.bugs}</p>
+            <p className="text-xs text-[var(--foreground-muted)]">Bugs</p>
+          </div>
+          <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border-subtle)] h-[76px]">
+            <p className="text-2xl font-bold text-blue-400">{stats.features}</p>
+            <p className="text-xs text-[var(--foreground-muted)]">Features</p>
+          </div>
         </div>
-        <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border-subtle)]">
-          <p className="text-2xl font-bold text-yellow-400">{stats.pending}</p>
-          <p className="text-xs text-[var(--foreground-muted)]">Pending</p>
-        </div>
-        <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border-subtle)]">
-          <p className="text-2xl font-bold text-red-400">{stats.bugs}</p>
-          <p className="text-xs text-[var(--foreground-muted)]">Bugs</p>
-        </div>
-        <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border-subtle)]">
-          <p className="text-2xl font-bold text-blue-400">{stats.features}</p>
-          <p className="text-xs text-[var(--foreground-muted)]">Features</p>
-        </div>
-      </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
@@ -143,54 +174,62 @@ export default function AdminFeedbackPage() {
       </div>
 
       {/* Feedback Table */}
-      <div className="bg-[var(--surface)] rounded-xl border border-[var(--border-subtle)] overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-[var(--background)]">
-            <tr>
-              <th className="text-left p-4 text-sm font-medium text-[var(--foreground-muted)]">Feedback</th>
-              <th className="text-left p-4 text-sm font-medium text-[var(--foreground-muted)]">Type</th>
-              <th className="text-left p-4 text-sm font-medium text-[var(--foreground-muted)]">Status</th>
-              <th className="text-left p-4 text-sm font-medium text-[var(--foreground-muted)]">Priority</th>
-              <th className="text-left p-4 text-sm font-medium text-[var(--foreground-muted)]">User</th>
-              <th className="text-left p-4 text-sm font-medium text-[var(--foreground-muted)]">Date</th>
-              <th className="text-right p-4 text-sm font-medium text-[var(--foreground-muted)]">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredFeedbacks.map(feedback => {
-              const typeCfg = typeConfig[feedback.type]
-              const statusCfg = statusConfig[feedback.status]
-              const priorityCfg = priorityConfig[feedback.priority]
-              const TypeIcon = typeCfg.icon
-              return (
-                <tr key={feedback.id} className="border-t border-[var(--border-subtle)] hover:bg-[var(--background)]">
-                  <td className="p-4">
-                    <p className="font-medium">{feedback.title}</p>
-                    <p className="text-sm text-[var(--foreground-muted)] line-clamp-1">{feedback.description}</p>
-                  </td>
-                  <td className="p-4">
-                    <span className={`flex items-center gap-1 text-xs ${typeCfg.color}`}>
-                      <TypeIcon size={14} /> {typeCfg.label}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <span className={`text-xs px-2 py-1 rounded-full ${statusCfg.bg} ${statusCfg.color}`}>{statusCfg.label}</span>
-                  </td>
-                  <td className="p-4">
-                    <span className={`text-xs ${priorityCfg.color}`}>{priorityCfg.label}</span>
-                  </td>
-                  <td className="p-4 text-sm">{feedback.profiles?.username || 'Anonymous'}</td>
-                  <td className="p-4 text-sm text-[var(--foreground-muted)]">{new Date(feedback.created_at).toLocaleDateString()}</td>
-                  <td className="p-4 text-right">
-                    <button onClick={() => { setSelectedFeedback(feedback); setAdminNotes(feedback.admin_notes || '') }} className="p-2 hover:bg-[var(--surface)] rounded-lg"><Eye size={16} /></button>
-                    <button onClick={() => deleteFeedback(feedback.id)} className="p-2 hover:bg-red-500/10 text-red-400 rounded-lg"><Trash2 size={16} /></button>
+      {loading ? <TableSkeleton /> : (
+        <div className="bg-[var(--surface)] rounded-xl border border-[var(--border-subtle)] overflow-hidden min-h-[400px]">
+          <table className="w-full">
+            <thead className="bg-[var(--background)]">
+              <tr>
+                <th className="text-left p-4 text-sm font-medium text-[var(--foreground-muted)]">Feedback</th>
+                <th className="text-left p-4 text-sm font-medium text-[var(--foreground-muted)]">Type</th>
+                <th className="text-left p-4 text-sm font-medium text-[var(--foreground-muted)]">Status</th>
+                <th className="text-left p-4 text-sm font-medium text-[var(--foreground-muted)]">Priority</th>
+                <th className="text-left p-4 text-sm font-medium text-[var(--foreground-muted)]">User</th>
+                <th className="text-left p-4 text-sm font-medium text-[var(--foreground-muted)]">Date</th>
+                <th className="text-right p-4 text-sm font-medium text-[var(--foreground-muted)]">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredFeedbacks.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-8 text-center text-[var(--foreground-muted)]">
+                    No feedback found
                   </td>
                 </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+              ) : filteredFeedbacks.map(feedback => {
+                const typeCfg = typeConfig[feedback.type]
+                const statusCfg = statusConfig[feedback.status]
+                const priorityCfg = priorityConfig[feedback.priority]
+                const TypeIcon = typeCfg.icon
+                return (
+                  <tr key={feedback.id} className="border-t border-[var(--border-subtle)] hover:bg-[var(--background)] h-[73px]">
+                    <td className="p-4">
+                      <p className="font-medium">{feedback.title}</p>
+                      <p className="text-sm text-[var(--foreground-muted)] line-clamp-1">{feedback.description}</p>
+                    </td>
+                    <td className="p-4">
+                      <span className={`flex items-center gap-1 text-xs ${typeCfg.color}`}>
+                        <TypeIcon size={14} /> {typeCfg.label}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <span className={`text-xs px-2 py-1 rounded-full ${statusCfg.bg} ${statusCfg.color}`}>{statusCfg.label}</span>
+                    </td>
+                    <td className="p-4">
+                      <span className={`text-xs ${priorityCfg.color}`}>{priorityCfg.label}</span>
+                    </td>
+                    <td className="p-4 text-sm">{feedback.profiles?.username || 'Anonymous'}</td>
+                    <td className="p-4 text-sm text-[var(--foreground-muted)]">{new Date(feedback.created_at).toLocaleDateString()}</td>
+                    <td className="p-4 text-right">
+                      <button onClick={() => { setSelectedFeedback(feedback); setAdminNotes(feedback.admin_notes || '') }} className="p-2 hover:bg-[var(--surface)] rounded-lg"><Eye size={16} /></button>
+                      <button onClick={() => deleteFeedback(feedback.id)} className="p-2 hover:bg-red-500/10 text-red-400 rounded-lg"><Trash2 size={16} /></button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Detail Modal */}
       {selectedFeedback && (
