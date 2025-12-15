@@ -5,8 +5,10 @@ import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ProfileIcon } from '@/lib/profile-icons'
 import { BadgeDisplay, UserBadge } from '@/lib/badges'
-import { User, Calendar, Trophy, Flame, Zap, TrendingUp, Globe, Award, ArrowLeft } from 'lucide-react'
+import { Calendar, Trophy, Flame, Zap, TrendingUp, Globe, Award, ArrowLeft, UserPlus, Check } from 'lucide-react'
 import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 
 interface PublicProfile {
   id: string
@@ -26,13 +28,17 @@ interface PublicProfile {
   primary_badge: { id: string; name: string; icon: string; color: string } | null
 }
 
+type FriendStatus = 'none' | 'pending' | 'accepted' | 'self'
+
 export default function PublicProfilePage() {
   const params = useParams()
-  const slug = params.slug as string // Can be username or UUID
+  const slug = params.slug as string
   const [profile, setProfile] = useState<PublicProfile | null>(null)
   const [badges, setBadges] = useState<UserBadge[]>([])
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [friendStatus, setFriendStatus] = useState<FriendStatus>('none')
+  const [addingFriend, setAddingFriend] = useState(false)
 
   useEffect(() => {
     fetchPublicProfile()
@@ -41,15 +47,14 @@ export default function PublicProfilePage() {
   const fetchPublicProfile = async () => {
     try {
       const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
       
-      // Try to find by username first (priority 0), then by UUID (priority 1)
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug)
       
       let query = supabase
         .from('public_profiles')
         .select('*')
         .eq('is_public', true)
-        .eq('show_on_leaderboard', true)
       
       if (isUUID) {
         query = query.eq('id', slug)
@@ -66,6 +71,28 @@ export default function PublicProfilePage() {
       }
       
       setProfile(data as PublicProfile)
+      
+      // Check if this is the current user's profile
+      if (user && data.id === user.id) {
+        setFriendStatus('self')
+      } else if (user) {
+        // Check friendship status from both directions
+        const { data: friendships } = await supabase
+          .from('user_friends')
+          .select('status')
+          .or(`and(user_id.eq.${user.id},friend_id.eq.${data.id}),and(user_id.eq.${data.id},friend_id.eq.${user.id})`)
+        
+        if (friendships && friendships.length > 0) {
+          // If any record shows 'accepted', they are friends
+          const isAccepted = friendships.some(f => f.status === 'accepted')
+          if (isAccepted) {
+            setFriendStatus('accepted')
+          } else {
+            // Otherwise show pending
+            setFriendStatus('pending')
+          }
+        }
+      }
       
       // Fetch user badges
       const { data: userBadges } = await supabase
@@ -91,6 +118,35 @@ export default function PublicProfilePage() {
       setLoading(false)
     }
   }
+
+  const sendFriendRequest = async () => {
+    if (!profile) return
+    setAddingFriend(true)
+    
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        toast.error('Please login to add friends')
+        return
+      }
+
+      const { error } = await supabase
+        .from('user_friends')
+        .insert({ user_id: user.id, friend_id: profile.id, status: 'pending' })
+
+      if (error) throw error
+      
+      setFriendStatus('pending')
+      toast.success('Friend request sent!')
+    } catch (error) {
+      console.error('Error sending friend request:', error)
+      toast.error('Failed to send friend request')
+    } finally {
+      setAddingFriend(false)
+    }
+  }
+
 
   if (loading) {
     return (
@@ -152,14 +208,42 @@ export default function PublicProfilePage() {
 
           {/* Info */}
           <div className="flex-1">
+            {/* Full Name */}
             <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-3xl font-bold">@{profile.username || 'user'}</h1>
+              <h1 className="text-3xl font-bold">
+                {profile.full_name || profile.username || 'User'}
+              </h1>
               {profile.primary_badge && (
                 <BadgeDisplay badge={profile.primary_badge} size="md" />
               )}
             </div>
-            {profile.full_name && profile.full_name !== profile.username && (
-              <p className="text-lg text-foreground-muted mb-2">{profile.full_name}</p>
+            
+            {/* Username */}
+            <p className="text-lg text-foreground-muted mb-3">@{profile.username || 'user'}</p>
+            
+            {/* Add Friend Button */}
+            {friendStatus === 'none' && (
+              <Button 
+                onClick={sendFriendRequest} 
+                disabled={addingFriend}
+                className="mb-3"
+                size="sm"
+              >
+                <UserPlus size={16} className="mr-2" />
+                {addingFriend ? 'Sending...' : 'Add Friend'}
+              </Button>
+            )}
+            {friendStatus === 'pending' && (
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-yellow-500/10 text-yellow-500 rounded-lg text-sm mb-3">
+                <UserPlus size={16} />
+                Request Pending
+              </div>
+            )}
+            {friendStatus === 'accepted' && (
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-accent-success/10 text-accent-success rounded-lg text-sm mb-3">
+                <Check size={16} />
+                Friends
+              </div>
             )}
             
             {/* All badges */}

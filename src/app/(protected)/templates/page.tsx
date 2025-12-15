@@ -6,7 +6,9 @@ import { useToast } from '@/components/ui/Toast'
 import { 
   Target, Briefcase, Camera, DollarSign, 
   Plus, Check, Sunrise, Heart, Dumbbell,
-  Code, Palette, Megaphone, FileText, Zap
+  Code, Palette, Megaphone, FileText, Zap,
+  Search, Grid3X3, List, LayoutGrid, Eye, X,
+  Star, Clock, Layers
 } from 'lucide-react'
 
 interface Template {
@@ -19,6 +21,7 @@ interface Template {
   items: any[]
 }
 
+// ============ HABIT TEMPLATES ============
 const habitTemplates: Template[] = [
   {
     id: 'morning-routine',
@@ -28,54 +31,12 @@ const habitTemplates: Template[] = [
     icon: Sunrise,
     color: 'orange',
     items: [
-      { 
-        name: 'Wake up at 6 AM', 
-        emoji: '🌅', 
-        category: 'morning', 
-        type: 'boolean',
-        description: 'Start your day early for better productivity'
-      },
-      { 
-        name: 'Drink water', 
-        emoji: '💧', 
-        category: 'health', 
-        type: 'numeric', 
-        target_value: 500, 
-        target_unit: 'ml',
-        description: 'Hydrate your body after sleep'
-      },
-      { 
-        name: 'Morning meditation', 
-        emoji: '🧘', 
-        category: 'morning', 
-        type: 'numeric', 
-        target_value: 10, 
-        target_unit: 'minutes',
-        description: 'Center your mind for the day ahead'
-      },
-      { 
-        name: 'Exercise', 
-        emoji: '💪', 
-        category: 'health', 
-        type: 'numeric', 
-        target_value: 30, 
-        target_unit: 'minutes',
-        description: 'Get your body moving and energized'
-      },
-      { 
-        name: 'Healthy breakfast', 
-        emoji: '🥗', 
-        category: 'health', 
-        type: 'boolean',
-        description: 'Fuel your body with nutritious food'
-      },
-      { 
-        name: 'Review daily goals', 
-        emoji: '📋', 
-        category: 'focus', 
-        type: 'boolean',
-        description: 'Plan and prioritize your day'
-      }
+      { name: 'Wake up at 6 AM', emoji: '🌅', category: 'morning', type: 'boolean', description: 'Start your day early for better productivity' },
+      { name: 'Drink water', emoji: '💧', category: 'health', type: 'numeric', target_value: 500, target_unit: 'ml', description: 'Hydrate your body after sleep' },
+      { name: 'Morning meditation', emoji: '🧘', category: 'morning', type: 'numeric', target_value: 10, target_unit: 'minutes', description: 'Center your mind for the day ahead' },
+      { name: 'Exercise', emoji: '💪', category: 'health', type: 'numeric', target_value: 30, target_unit: 'minutes', description: 'Get your body moving and energized' },
+      { name: 'Healthy breakfast', emoji: '🥗', category: 'health', type: 'boolean', description: 'Fuel your body with nutritious food' },
+      { name: 'Review daily goals', emoji: '📋', category: 'focus', type: 'boolean', description: 'Plan and prioritize your day' }
     ]
   },
   {
@@ -86,47 +47,11 @@ const habitTemplates: Template[] = [
     icon: Zap,
     color: 'yellow',
     items: [
-      { 
-        name: 'Deep work session', 
-        emoji: '🎯', 
-        category: 'work', 
-        type: 'numeric', 
-        target_value: 90, 
-        target_unit: 'minutes',
-        description: 'Uninterrupted focused work time'
-      },
-      { 
-        name: 'Pomodoro sessions', 
-        emoji: '🍅', 
-        category: 'work', 
-        type: 'numeric', 
-        target_value: 4, 
-        target_unit: 'sessions',
-        description: '25-minute focused work blocks'
-      },
-      { 
-        name: 'No distractions', 
-        emoji: '📵', 
-        category: 'focus', 
-        type: 'boolean',
-        description: 'Phone on silent, notifications off'
-      },
-      { 
-        name: 'Single-tasking', 
-        emoji: '🎯', 
-        category: 'focus', 
-        type: 'boolean',
-        description: 'Focus on one task at a time'
-      },
-      { 
-        name: 'Learning session', 
-        emoji: '📚', 
-        category: 'focus', 
-        type: 'numeric', 
-        target_value: 30, 
-        target_unit: 'minutes',
-        description: 'Dedicated time for skill development'
-      }
+      { name: 'Deep work session', emoji: '🎯', category: 'work', type: 'numeric', target_value: 90, target_unit: 'minutes', description: 'Uninterrupted focused work time' },
+      { name: 'Pomodoro sessions', emoji: '🍅', category: 'work', type: 'numeric', target_value: 4, target_unit: 'sessions', description: '25-minute focused work blocks' },
+      { name: 'No distractions', emoji: '📵', category: 'focus', type: 'boolean', description: 'Phone on silent, notifications off' },
+      { name: 'Single-tasking', emoji: '🎯', category: 'focus', type: 'boolean', description: 'Focus on one task at a time' },
+      { name: 'Learning session', emoji: '📚', category: 'focus', type: 'numeric', target_value: 30, target_unit: 'minutes', description: 'Dedicated time for skill development' }
     ]
   },
   {
@@ -137,58 +62,12 @@ const habitTemplates: Template[] = [
     icon: Dumbbell,
     color: 'red',
     items: [
-      { 
-        name: 'Morning workout', 
-        emoji: '🏋️', 
-        category: 'health', 
-        type: 'numeric', 
-        target_value: 45, 
-        target_unit: 'minutes',
-        description: 'Strength training or cardio session'
-      },
-      { 
-        name: 'Drink water', 
-        emoji: '💧', 
-        category: 'health', 
-        type: 'numeric', 
-        target_value: 2000, 
-        target_unit: 'ml',
-        description: 'Stay hydrated throughout the day'
-      },
-      { 
-        name: 'Track nutrition', 
-        emoji: '🍎', 
-        category: 'health', 
-        type: 'boolean',
-        description: 'Log meals and calories'
-      },
-      { 
-        name: 'Protein intake', 
-        emoji: '🥩', 
-        category: 'health', 
-        type: 'numeric', 
-        target_value: 150, 
-        target_unit: 'g',
-        description: 'Meet daily protein goals'
-      },
-      { 
-        name: 'Steps walked', 
-        emoji: '👟', 
-        category: 'health', 
-        type: 'numeric', 
-        target_value: 10000, 
-        target_unit: 'steps',
-        description: 'Daily step count goal'
-      },
-      { 
-        name: 'Evening stretch', 
-        emoji: '🤸', 
-        category: 'night', 
-        type: 'numeric', 
-        target_value: 15, 
-        target_unit: 'minutes',
-        description: 'Flexibility and recovery'
-      }
+      { name: 'Morning workout', emoji: '🏋️', category: 'health', type: 'numeric', target_value: 45, target_unit: 'minutes', description: 'Strength training or cardio session' },
+      { name: 'Drink water', emoji: '💧', category: 'health', type: 'numeric', target_value: 2000, target_unit: 'ml', description: 'Stay hydrated throughout the day' },
+      { name: 'Track nutrition', emoji: '🍎', category: 'health', type: 'boolean', description: 'Log meals and calories' },
+      { name: 'Protein intake', emoji: '🥩', category: 'health', type: 'numeric', target_value: 150, target_unit: 'g', description: 'Meet daily protein goals' },
+      { name: 'Steps walked', emoji: '👟', category: 'health', type: 'numeric', target_value: 10000, target_unit: 'steps', description: 'Daily step count goal' },
+      { name: 'Evening stretch', emoji: '🤸', category: 'night', type: 'numeric', target_value: 15, target_unit: 'minutes', description: 'Flexibility and recovery' }
     ]
   },
   {
@@ -199,54 +78,12 @@ const habitTemplates: Template[] = [
     icon: Heart,
     color: 'pink',
     items: [
-      { 
-        name: 'Morning gratitude', 
-        emoji: '🙏', 
-        category: 'morning', 
-        type: 'boolean',
-        description: 'Write 3 things you\'re grateful for'
-      },
-      { 
-        name: 'Meditation', 
-        emoji: '🧘', 
-        category: 'focus', 
-        type: 'numeric', 
-        target_value: 20, 
-        target_unit: 'minutes',
-        description: 'Mindfulness or breathing meditation'
-      },
-      { 
-        name: 'Journaling', 
-        emoji: '📝', 
-        category: 'focus', 
-        type: 'numeric', 
-        target_value: 10, 
-        target_unit: 'minutes',
-        description: 'Reflect on thoughts and feelings'
-      },
-      { 
-        name: 'Reading', 
-        emoji: '📖', 
-        category: 'night', 
-        type: 'numeric', 
-        target_value: 30, 
-        target_unit: 'minutes',
-        description: 'Read for pleasure or learning'
-      },
-      { 
-        name: 'Digital detox', 
-        emoji: '📱', 
-        category: 'night', 
-        type: 'boolean',
-        description: 'No screens 1 hour before bed'
-      },
-      { 
-        name: 'Self-care activity', 
-        emoji: '🛁', 
-        category: 'night', 
-        type: 'boolean',
-        description: 'Bath, skincare, or relaxation'
-      }
+      { name: 'Morning gratitude', emoji: '🙏', category: 'morning', type: 'boolean', description: 'Write 3 things you\'re grateful for' },
+      { name: 'Meditation', emoji: '🧘', category: 'focus', type: 'numeric', target_value: 20, target_unit: 'minutes', description: 'Mindfulness or breathing meditation' },
+      { name: 'Journaling', emoji: '📝', category: 'focus', type: 'numeric', target_value: 10, target_unit: 'minutes', description: 'Reflect on thoughts and feelings' },
+      { name: 'Reading', emoji: '📖', category: 'night', type: 'numeric', target_value: 30, target_unit: 'minutes', description: 'Read for pleasure or learning' },
+      { name: 'Digital detox', emoji: '📱', category: 'night', type: 'boolean', description: 'No screens 1 hour before bed' },
+      { name: 'Self-care activity', emoji: '🛁', category: 'night', type: 'boolean', description: 'Bath, skincare, or relaxation' }
     ]
   },
   {
@@ -257,58 +94,17 @@ const habitTemplates: Template[] = [
     icon: Briefcase,
     color: 'blue',
     items: [
-      { 
-        name: 'Market research', 
-        emoji: '📊', 
-        category: 'work', 
-        type: 'numeric', 
-        target_value: 30, 
-        target_unit: 'minutes',
-        description: 'Study competitors and trends'
-      },
-      { 
-        name: 'Product development', 
-        emoji: '🛠️', 
-        category: 'work', 
-        type: 'numeric', 
-        target_value: 120, 
-        target_unit: 'minutes',
-        description: 'Build or improve your product'
-      },
-      { 
-        name: 'Customer outreach', 
-        emoji: '📞', 
-        category: 'work', 
-        type: 'numeric', 
-        target_value: 5, 
-        target_unit: 'contacts',
-        description: 'Connect with potential customers'
-      },
-      { 
-        name: 'Content creation', 
-        emoji: '✍️', 
-        category: 'work', 
-        type: 'boolean',
-        description: 'Blog, social media, or marketing content'
-      },
-      { 
-        name: 'Financial review', 
-        emoji: '💰', 
-        category: 'work', 
-        type: 'boolean',
-        description: 'Check revenue, expenses, and metrics'
-      },
-      { 
-        name: 'Network building', 
-        emoji: '🤝', 
-        category: 'work', 
-        type: 'boolean',
-        description: 'Connect with other entrepreneurs'
-      }
+      { name: 'Market research', emoji: '📊', category: 'work', type: 'numeric', target_value: 30, target_unit: 'minutes', description: 'Study competitors and trends' },
+      { name: 'Product development', emoji: '🛠️', category: 'work', type: 'numeric', target_value: 120, target_unit: 'minutes', description: 'Build or improve your product' },
+      { name: 'Customer outreach', emoji: '📞', category: 'work', type: 'numeric', target_value: 5, target_unit: 'contacts', description: 'Connect with potential customers' },
+      { name: 'Content creation', emoji: '✍️', category: 'work', type: 'boolean', description: 'Blog, social media, or marketing content' },
+      { name: 'Financial review', emoji: '💰', category: 'work', type: 'boolean', description: 'Check revenue, expenses, and metrics' },
+      { name: 'Network building', emoji: '🤝', category: 'work', type: 'boolean', description: 'Connect with other entrepreneurs' }
     ]
   }
 ]
 
+// ============ PROJECT TEMPLATES ============
 const projectTemplates: Template[] = [
   {
     id: 'web-app',
@@ -392,6 +188,7 @@ const projectTemplates: Template[] = [
   }
 ]
 
+// ============ INSTAGRAM TEMPLATES ============
 const instagramTemplates: Template[] = [
   {
     id: 'content-creator',
@@ -401,70 +198,14 @@ const instagramTemplates: Template[] = [
     icon: Palette,
     color: 'pink',
     items: [
-      { 
-        title: 'Introduction post', 
-        format: 'post', 
-        status: 'idea',
-        hook: 'Hey everyone! Let me introduce myself...',
-        caption: 'Welcome to my page! Here\'s what you can expect from me...',
-        hashtags: '#introduction #contentcreator #newpost #hello'
-      },
-      { 
-        title: 'Behind the scenes', 
-        format: 'reel', 
-        status: 'idea',
-        hook: 'What my workspace actually looks like...',
-        caption: 'The reality behind content creation! Not always glamorous but always worth it 💪',
-        hashtags: '#behindthescenes #reality #contentcreation #workspace'
-      },
-      { 
-        title: 'Tutorial/How-to', 
-        format: 'reel', 
-        status: 'idea',
-        hook: 'Here\'s how I do [specific skill]...',
-        caption: 'Step-by-step tutorial! Save this post for later 📌',
-        hashtags: '#tutorial #howto #tips #education #learn'
-      },
-      { 
-        title: 'Day in the life', 
-        format: 'story', 
-        status: 'idea',
-        hook: 'Come spend the day with me!',
-        caption: 'My typical Monday routine - what does yours look like?',
-        hashtags: '#dayinthelife #routine #lifestyle #monday'
-      },
-      { 
-        title: 'Tips & tricks', 
-        format: 'post', 
-        status: 'idea',
-        hook: '5 game-changing tips for...',
-        caption: 'These tips changed everything for me! Which one will you try first?',
-        hashtags: '#tips #tricks #advice #productivity #growth'
-      },
-      { 
-        title: 'Q&A session', 
-        format: 'story', 
-        status: 'idea',
-        hook: 'Ask me anything!',
-        caption: 'Your questions answered! Keep them coming 💬',
-        hashtags: '#qna #askmeanything #questions #community'
-      },
-      { 
-        title: 'Transformation/Before-After', 
-        format: 'post', 
-        status: 'idea',
-        hook: 'The glow up is real...',
-        caption: 'Progress over perfection! What transformation are you working on?',
-        hashtags: '#transformation #beforeafter #progress #growth #journey'
-      },
-      { 
-        title: 'Collaboration post', 
-        format: 'reel', 
-        status: 'idea',
-        hook: 'Collabing with amazing creators!',
-        caption: 'So grateful for this collaboration! Check out @partner for more amazing content',
-        hashtags: '#collaboration #partnership #creators #community #grateful'
-      }
+      { title: 'Introduction post', format: 'post', status: 'idea', hook: 'Hey everyone! Let me introduce myself...', caption: 'Welcome to my page! Here\'s what you can expect from me...', hashtags: '#introduction #contentcreator #newpost #hello' },
+      { title: 'Behind the scenes', format: 'reel', status: 'idea', hook: 'What my workspace actually looks like...', caption: 'The reality behind content creation! Not always glamorous but always worth it 💪', hashtags: '#behindthescenes #reality #contentcreation #workspace' },
+      { title: 'Tutorial/How-to', format: 'reel', status: 'idea', hook: 'Here\'s how I do [specific skill]...', caption: 'Step-by-step tutorial! Save this post for later 📌', hashtags: '#tutorial #howto #tips #education #learn' },
+      { title: 'Day in the life', format: 'story', status: 'idea', hook: 'Come spend the day with me!', caption: 'My typical Monday routine - what does yours look like?', hashtags: '#dayinthelife #routine #lifestyle #monday' },
+      { title: 'Tips & tricks', format: 'post', status: 'idea', hook: '5 game-changing tips for...', caption: 'These tips changed everything for me! Which one will you try first?', hashtags: '#tips #tricks #advice #productivity #growth' },
+      { title: 'Q&A session', format: 'story', status: 'idea', hook: 'Ask me anything!', caption: 'Your questions answered! Keep them coming 💬', hashtags: '#qna #askmeanything #questions #community' },
+      { title: 'Transformation/Before-After', format: 'post', status: 'idea', hook: 'The glow up is real...', caption: 'Progress over perfection! What transformation are you working on?', hashtags: '#transformation #beforeafter #progress #growth #journey' },
+      { title: 'Collaboration post', format: 'reel', status: 'idea', hook: 'Collabing with amazing creators!', caption: 'So grateful for this collaboration! Check out @partner for more amazing content', hashtags: '#collaboration #partnership #creators #community #grateful' }
     ]
   },
   {
@@ -475,62 +216,13 @@ const instagramTemplates: Template[] = [
     icon: Briefcase,
     color: 'blue',
     items: [
-      { 
-        title: 'Company introduction', 
-        format: 'post', 
-        status: 'idea',
-        hook: 'Meet the team behind [Company Name]',
-        caption: 'We\'re passionate about [mission]. Here\'s our story and what drives us every day.',
-        hashtags: '#aboutus #company #team #mission #business'
-      },
-      { 
-        title: 'Product showcase', 
-        format: 'reel', 
-        status: 'idea',
-        hook: 'Our product in action!',
-        caption: 'See how [Product] can transform your [specific benefit]. Link in bio to learn more!',
-        hashtags: '#product #showcase #demo #innovation #solution'
-      },
-      { 
-        title: 'Customer testimonial', 
-        format: 'post', 
-        status: 'idea',
-        hook: 'What our customers are saying...',
-        caption: 'Nothing makes us happier than hearing success stories from our amazing customers! 🙌',
-        hashtags: '#testimonial #customer #success #review #grateful'
-      },
-      { 
-        title: 'Team spotlight', 
-        format: 'story', 
-        status: 'idea',
-        hook: 'Meet [Team Member Name]',
-        caption: 'Getting to know the amazing people who make our company special!',
-        hashtags: '#team #spotlight #employee #culture #people'
-      },
-      { 
-        title: 'Industry insights', 
-        format: 'post', 
-        status: 'idea',
-        hook: 'Industry trend alert!',
-        caption: 'Here\'s what we\'re seeing in [industry] and how it affects you...',
-        hashtags: '#industry #insights #trends #business #knowledge'
-      },
-      { 
-        title: 'Special offer announcement', 
-        format: 'reel', 
-        status: 'idea',
-        hook: 'Limited time offer!',
-        caption: 'Don\'t miss out on this exclusive deal! Valid until [date]. Link in bio 🔥',
-        hashtags: '#sale #offer #limited #exclusive #deal'
-      },
-      { 
-        title: 'FAQ answers', 
-        format: 'story', 
-        status: 'idea',
-        hook: 'Your questions answered!',
-        caption: 'Clearing up common questions about our [product/service]',
-        hashtags: '#faq #questions #answers #help #support'
-      }
+      { title: 'Company introduction', format: 'post', status: 'idea', hook: 'Meet the team behind [Company Name]', caption: 'We\'re passionate about [mission]. Here\'s our story and what drives us every day.', hashtags: '#aboutus #company #team #mission #business' },
+      { title: 'Product showcase', format: 'reel', status: 'idea', hook: 'Our product in action!', caption: 'See how [Product] can transform your [specific benefit]. Link in bio to learn more!', hashtags: '#product #showcase #demo #innovation #solution' },
+      { title: 'Customer testimonial', format: 'post', status: 'idea', hook: 'What our customers are saying...', caption: 'Nothing makes us happier than hearing success stories from our amazing customers! 🙌', hashtags: '#testimonial #customer #success #review #grateful' },
+      { title: 'Team spotlight', format: 'story', status: 'idea', hook: 'Meet [Team Member Name]', caption: 'Getting to know the amazing people who make our company special!', hashtags: '#team #spotlight #employee #culture #people' },
+      { title: 'Industry insights', format: 'post', status: 'idea', hook: 'Industry trend alert!', caption: 'Here\'s what we\'re seeing in [industry] and how it affects you...', hashtags: '#industry #insights #trends #business #knowledge' },
+      { title: 'Special offer announcement', format: 'reel', status: 'idea', hook: 'Limited time offer!', caption: 'Don\'t miss out on this exclusive deal! Valid until [date]. Link in bio 🔥', hashtags: '#sale #offer #limited #exclusive #deal' },
+      { title: 'FAQ answers', format: 'story', status: 'idea', hook: 'Your questions answered!', caption: 'Clearing up common questions about our [product/service]', hashtags: '#faq #questions #answers #help #support' }
     ]
   },
   {
@@ -541,66 +233,18 @@ const instagramTemplates: Template[] = [
     icon: Megaphone,
     color: 'orange',
     items: [
-      { 
-        title: 'Trending audio reel', 
-        format: 'reel', 
-        status: 'idea',
-        hook: 'Using trending audio for maximum reach',
-        caption: 'Jumping on this trend! What\'s your favorite trending sound right now?',
-        hashtags: '#trending #viral #audio #reel #fyp'
-      },
-      { 
-        title: 'Controversial opinion', 
-        format: 'post', 
-        status: 'idea',
-        hook: 'Unpopular opinion but...',
-        caption: 'I said what I said 🤷‍♀️ What\'s your take on this?',
-        hashtags: '#unpopularopinion #controversial #debate #thoughts #discussion'
-      },
-      { 
-        title: 'Life hack/tip', 
-        format: 'reel', 
-        status: 'idea',
-        hook: 'This life hack changed everything!',
-        caption: 'Try this and thank me later! What\'s your best life hack?',
-        hashtags: '#lifehack #tip #hack #productivity #smart'
-      },
-      { 
-        title: 'Relatable meme', 
-        format: 'post', 
-        status: 'idea',
-        hook: 'When you realize it\'s Monday again...',
-        caption: 'Tag someone who needs to see this 😂',
-        hashtags: '#relatable #meme #funny #mood #monday'
-      },
-      { 
-        title: 'Challenge participation', 
-        format: 'reel', 
-        status: 'idea',
-        hook: 'Joining the [Challenge Name] challenge!',
-        caption: 'Had to try this challenge! Who else is doing it? Tag me in yours!',
-        hashtags: '#challenge #trend #fun #participate #community'
-      },
-      { 
-        title: 'Poll/engagement story', 
-        format: 'story', 
-        status: 'idea',
-        hook: 'Help me decide!',
-        caption: 'Your vote matters! Let me know what you think in the poll',
-        hashtags: '#poll #vote #engagement #community #decision'
-      },
-      { 
-        title: 'Giveaway announcement', 
-        format: 'post', 
-        status: 'idea',
-        hook: 'GIVEAWAY TIME! 🎉',
-        caption: 'To enter: 1) Follow me 2) Like this post 3) Tag 2 friends. Winner announced [date]!',
-        hashtags: '#giveaway #contest #free #win #follow'
-      }
+      { title: 'Trending audio reel', format: 'reel', status: 'idea', hook: 'Using trending audio for maximum reach', caption: 'Jumping on this trend! What\'s your favorite trending sound right now?', hashtags: '#trending #viral #audio #reel #fyp' },
+      { title: 'Controversial opinion', format: 'post', status: 'idea', hook: 'Unpopular opinion but...', caption: 'I said what I said 🤷‍♀️ What\'s your take on this?', hashtags: '#unpopularopinion #controversial #debate #thoughts #discussion' },
+      { title: 'Life hack/tip', format: 'reel', status: 'idea', hook: 'This life hack changed everything!', caption: 'Try this and thank me later! What\'s your best life hack?', hashtags: '#lifehack #tip #hack #productivity #smart' },
+      { title: 'Relatable meme', format: 'post', status: 'idea', hook: 'When you realize it\'s Monday again...', caption: 'Tag someone who needs to see this 😂', hashtags: '#relatable #meme #funny #mood #monday' },
+      { title: 'Challenge participation', format: 'reel', status: 'idea', hook: 'Joining the [Challenge Name] challenge!', caption: 'Had to try this challenge! Who else is doing it? Tag me in yours!', hashtags: '#challenge #trend #fun #participate #community' },
+      { title: 'Poll/engagement story', format: 'story', status: 'idea', hook: 'Help me decide!', caption: 'Your vote matters! Let me know what you think in the poll', hashtags: '#poll #vote #engagement #community #decision' },
+      { title: 'Giveaway announcement', format: 'post', status: 'idea', hook: 'GIVEAWAY TIME! 🎉', caption: 'To enter: 1) Follow me 2) Like this post 3) Tag 2 friends. Winner announced [date]!', hashtags: '#giveaway #contest #free #win #follow' }
     ]
   }
 ]
 
+// ============ FREELANCE TEMPLATES ============
 const freelanceTemplates: Template[] = [
   {
     id: 'web-development-client',
@@ -609,18 +253,7 @@ const freelanceTemplates: Template[] = [
     type: 'freelance',
     icon: Code,
     color: 'green',
-    items: [
-      { 
-        name: 'Web Development Project',
-        platform: 'upwork',
-        project_title: 'Full-Stack Web Application Development',
-        value: 50000,
-        currency: 'INR',
-        stage: 'lead',
-        next_action: 'Send initial proposal',
-        notes: 'React + Node.js project, 6-8 weeks timeline, includes database design and deployment'
-      }
-    ]
+    items: [{ name: 'Web Development Project', platform: 'upwork', project_title: 'Full-Stack Web Application Development', value: 50000, currency: 'INR', stage: 'lead', next_action: 'Send initial proposal', notes: 'React + Node.js project, 6-8 weeks timeline, includes database design and deployment' }]
   },
   {
     id: 'mobile-app-client',
@@ -629,18 +262,7 @@ const freelanceTemplates: Template[] = [
     type: 'freelance',
     icon: Briefcase,
     color: 'blue',
-    items: [
-      { 
-        name: 'Mobile App Development',
-        platform: 'fiverr',
-        project_title: 'Cross-Platform Mobile App Development',
-        value: 75000,
-        currency: 'INR',
-        stage: 'in_talk',
-        next_action: 'Schedule technical discussion call',
-        notes: 'React Native app with backend API, iOS and Android deployment, 8-10 weeks'
-      }
-    ]
+    items: [{ name: 'Mobile App Development', platform: 'fiverr', project_title: 'Cross-Platform Mobile App Development', value: 75000, currency: 'INR', stage: 'in_talk', next_action: 'Schedule technical discussion call', notes: 'React Native app with backend API, iOS and Android deployment, 8-10 weeks' }]
   },
   {
     id: 'ui-ux-design-client',
@@ -649,18 +271,7 @@ const freelanceTemplates: Template[] = [
     type: 'freelance',
     icon: Palette,
     color: 'purple',
-    items: [
-      { 
-        name: 'UI/UX Design Project',
-        platform: 'dm',
-        project_title: 'SaaS Dashboard Design & Prototyping',
-        value: 30000,
-        currency: 'INR',
-        stage: 'proposal',
-        next_action: 'Send detailed design proposal with timeline',
-        notes: 'Figma design system, user research, wireframes, high-fidelity mockups, prototype'
-      }
-    ]
+    items: [{ name: 'UI/UX Design Project', platform: 'dm', project_title: 'SaaS Dashboard Design & Prototyping', value: 30000, currency: 'INR', stage: 'proposal', next_action: 'Send detailed design proposal with timeline', notes: 'Figma design system, user research, wireframes, high-fidelity mockups, prototype' }]
   },
   {
     id: 'ecommerce-client',
@@ -669,18 +280,7 @@ const freelanceTemplates: Template[] = [
     type: 'freelance',
     icon: DollarSign,
     color: 'emerald',
-    items: [
-      { 
-        name: 'E-commerce Store Development',
-        platform: 'other',
-        project_title: 'Shopify/WooCommerce Store Setup',
-        value: 40000,
-        currency: 'INR',
-        stage: 'active',
-        next_action: 'Complete product catalog setup',
-        notes: 'Custom theme, payment gateway integration, inventory management, SEO optimization'
-      }
-    ]
+    items: [{ name: 'E-commerce Store Development', platform: 'other', project_title: 'Shopify/WooCommerce Store Setup', value: 40000, currency: 'INR', stage: 'active', next_action: 'Complete product catalog setup', notes: 'Custom theme, payment gateway integration, inventory management, SEO optimization' }]
   },
   {
     id: 'content-management-client',
@@ -689,18 +289,7 @@ const freelanceTemplates: Template[] = [
     type: 'freelance',
     icon: FileText,
     color: 'indigo',
-    items: [
-      { 
-        name: 'CMS Development Project',
-        platform: 'upwork',
-        project_title: 'Custom CMS with Admin Panel',
-        value: 60000,
-        currency: 'INR',
-        stage: 'done',
-        next_action: 'Request testimonial and referrals',
-        notes: 'WordPress/Strapi CMS, custom admin dashboard, user roles, content workflows'
-      }
-    ]
+    items: [{ name: 'CMS Development Project', platform: 'upwork', project_title: 'Custom CMS with Admin Panel', value: 60000, currency: 'INR', stage: 'done', next_action: 'Request testimonial and referrals', notes: 'WordPress/Strapi CMS, custom admin dashboard, user roles, content workflows' }]
   },
   {
     id: 'api-integration-client',
@@ -709,31 +298,40 @@ const freelanceTemplates: Template[] = [
     type: 'freelance',
     icon: Zap,
     color: 'yellow',
-    items: [
-      { 
-        name: 'API Integration Project',
-        platform: 'fiverr',
-        project_title: 'Payment Gateway & Third-party API Integration',
-        value: 25000,
-        currency: 'INR',
-        stage: 'lead',
-        next_action: 'Analyze API documentation and provide estimate',
-        notes: 'Razorpay/Stripe integration, social media APIs, email service integration'
-      }
-    ]
+    items: [{ name: 'API Integration Project', platform: 'fiverr', project_title: 'Payment Gateway & Third-party API Integration', value: 25000, currency: 'INR', stage: 'lead', next_action: 'Analyze API documentation and provide estimate', notes: 'Razorpay/Stripe integration, social media APIs, email service integration' }]
   }
 ]
 
+type ViewMode = 'cards' | 'list' | 'grid'
+type TemplateType = 'all' | 'habit' | 'project' | 'instagram' | 'freelance'
+
 export default function TemplatesPage() {
   const { showToast } = useToast()
-  const [selectedType, setSelectedType] = useState<'all' | 'habit' | 'project' | 'instagram' | 'freelance'>('all')
+  const [selectedType, setSelectedType] = useState<TemplateType>('all')
+  const [viewMode, setViewMode] = useState<ViewMode>('cards')
+  const [searchQuery, setSearchQuery] = useState('')
   const [applying, setApplying] = useState<string | null>(null)
+  const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null)
   const supabase = createClient()
 
   const allTemplates = [...habitTemplates, ...projectTemplates, ...instagramTemplates, ...freelanceTemplates]
-  const filteredTemplates = selectedType === 'all' 
-    ? allTemplates 
-    : allTemplates.filter(t => t.type === selectedType)
+  
+  const filteredTemplates = allTemplates.filter(t => {
+    const matchesType = selectedType === 'all' || t.type === selectedType
+    const matchesSearch = searchQuery === '' || 
+      t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.description.toLowerCase().includes(searchQuery.toLowerCase())
+    return matchesType && matchesSearch
+  })
+
+  // Stats
+  const stats = {
+    total: allTemplates.length,
+    habits: habitTemplates.length,
+    projects: projectTemplates.length,
+    instagram: instagramTemplates.length,
+    freelance: freelanceTemplates.length
+  }
 
   const applyTemplate = async (template: Template) => {
     setApplying(template.id)
@@ -745,108 +343,57 @@ export default function TemplatesPage() {
     }
 
     try {
-      // Ensure profile exists before inserting any data
-      const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', user.id)
-        .single()
+      const { data: existingProfile } = await supabase.from('profiles').select('id').eq('id', user.id).single()
       
       if (!existingProfile) {
-        // Create profile if it doesn't exist
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: user.id,
-            username: user.email?.split('@')[0] || `user_${user.id.slice(0, 8)}`,
-            full_name: user.user_metadata?.full_name || null,
-            avatar_url: user.user_metadata?.avatar_url || null
-          })
-        if (profileError && profileError.code !== '23505') { // Ignore duplicate key error
-          throw profileError
-        }
+        const { error: profileError } = await supabase.from('profiles').insert({
+          id: user.id,
+          username: user.email?.split('@')[0] || `user_${user.id.slice(0, 8)}`,
+          full_name: user.user_metadata?.full_name || null,
+          avatar_url: user.user_metadata?.avatar_url || null
+        })
+        if (profileError && profileError.code !== '23505') throw profileError
       }
 
       if (template.type === 'habit') {
-        // Insert habits with new schema fields
         const habits = template.items.map(item => ({
-          user_id: user.id,
-          name: item.name,
-          emoji: item.emoji || null,
-          description: item.description || null,
-          category: item.category,
-          type: item.type,
-          target_value: item.target_value || null,
-          target_unit: item.target_unit || null,
-          is_active: true
+          user_id: user.id, name: item.name, emoji: item.emoji || null, description: item.description || null,
+          category: item.category, type: item.type, target_value: item.target_value || null, target_unit: item.target_unit || null, is_active: true
         }))
-        
         const { error } = await supabase.from('habits').insert(habits)
         if (error) throw error
-        
       } else if (template.type === 'project') {
-        // Create project with tasks using new schema
-        const { data: project, error: projectError } = await supabase
-          .from('projects')
-          .insert({
-            user_id: user.id,
-            name: template.name,
-            description: template.description,
-            status: 'idea'
-          })
-          .select()
-          .single()
-        
+        const { data: project, error: projectError } = await supabase.from('projects').insert({
+          user_id: user.id, name: template.name, description: template.description, status: 'idea'
+        }).select().single()
         if (projectError) throw projectError
-        
         if (project) {
           const tasks = template.items.map(item => ({
-            user_id: user.id,
-            project_id: project.id,
-            title: item.name,
-            description: item.description || null,
-            status: item.status || 'pending',
-            priority: item.priority || 'medium'
+            user_id: user.id, project_id: project.id, title: item.name, description: item.description || null,
+            status: item.status || 'pending', priority: item.priority || 'medium'
           }))
-          
           const { error: tasksError } = await supabase.from('tasks').insert(tasks)
           if (tasksError) throw tasksError
         }
-        
       } else if (template.type === 'instagram') {
-        // Insert instagram posts with new schema
         const posts = template.items.map(item => ({
-          user_id: user.id,
-          title: item.title,
-          hook: item.hook || null,
-          caption: item.caption || null,
-          hashtags: item.hashtags || null,
-          format: item.format,
-          status: item.status || 'idea'
+          user_id: user.id, title: item.title, hook: item.hook || null, caption: item.caption || null,
+          hashtags: item.hashtags || null, format: item.format, status: item.status || 'idea'
         }))
-        
         const { error } = await supabase.from('instagram_posts').insert(posts)
         if (error) throw error
-        
       } else if (template.type === 'freelance') {
-        // Insert freelance clients from template
         const clients = template.items.map(item => ({
-          user_id: user.id,
-          name: item.name,
-          platform: item.platform || 'other',
-          project_title: item.project_title || null,
-          value: item.value || null,
-          currency: item.currency || 'INR',
-          stage: item.stage || 'lead',
-          next_action: item.next_action || null,
-          notes: item.notes || template.description
+          user_id: user.id, name: item.name, platform: item.platform || 'other', project_title: item.project_title || null,
+          value: item.value || null, currency: item.currency || 'INR', stage: item.stage || 'lead',
+          next_action: item.next_action || null, notes: item.notes || template.description
         }))
-        
         const { error } = await supabase.from('freelance_clients').insert(clients)
         if (error) throw error
       }
 
       showToast(`${template.name} template applied successfully!`, 'success')
+      setPreviewTemplate(null)
     } catch (error: any) {
       console.error('Error applying template:', error)
       showToast(`Error: ${error.message}`, 'error')
@@ -856,134 +403,444 @@ export default function TemplatesPage() {
   }
 
   const getColorClasses = (color: string) => {
-    const colors: Record<string, string> = {
-      orange: 'from-orange-500/10 to-orange-500/5 border-orange-500/20',
-      red: 'from-red-500/10 to-red-500/5 border-red-500/20',
-      yellow: 'from-yellow-500/10 to-yellow-500/5 border-yellow-500/20',
-      pink: 'from-pink-500/10 to-pink-500/5 border-pink-500/20',
-      indigo: 'from-indigo-500/10 to-indigo-500/5 border-indigo-500/20',
-      blue: 'from-blue-500/10 to-blue-500/5 border-blue-500/20',
-      purple: 'from-purple-500/10 to-purple-500/5 border-purple-500/20',
-      green: 'from-green-500/10 to-green-500/5 border-green-500/20',
-      emerald: 'from-emerald-500/10 to-emerald-500/5 border-emerald-500/20'
+    const colors: Record<string, { bg: string; border: string; text: string; icon: string }> = {
+      orange: { bg: 'from-orange-500/10 to-orange-500/5', border: 'border-orange-500/20', text: 'text-orange-500', icon: 'bg-orange-500/20' },
+      red: { bg: 'from-red-500/10 to-red-500/5', border: 'border-red-500/20', text: 'text-red-500', icon: 'bg-red-500/20' },
+      yellow: { bg: 'from-yellow-500/10 to-yellow-500/5', border: 'border-yellow-500/20', text: 'text-yellow-500', icon: 'bg-yellow-500/20' },
+      pink: { bg: 'from-pink-500/10 to-pink-500/5', border: 'border-pink-500/20', text: 'text-pink-500', icon: 'bg-pink-500/20' },
+      indigo: { bg: 'from-indigo-500/10 to-indigo-500/5', border: 'border-indigo-500/20', text: 'text-indigo-500', icon: 'bg-indigo-500/20' },
+      blue: { bg: 'from-blue-500/10 to-blue-500/5', border: 'border-blue-500/20', text: 'text-blue-500', icon: 'bg-blue-500/20' },
+      purple: { bg: 'from-purple-500/10 to-purple-500/5', border: 'border-purple-500/20', text: 'text-purple-500', icon: 'bg-purple-500/20' },
+      green: { bg: 'from-green-500/10 to-green-500/5', border: 'border-green-500/20', text: 'text-green-500', icon: 'bg-green-500/20' },
+      emerald: { bg: 'from-emerald-500/10 to-emerald-500/5', border: 'border-emerald-500/20', text: 'text-emerald-500', icon: 'bg-emerald-500/20' }
     }
     return colors[color] || colors.blue
+  }
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'habit': return Target
+      case 'project': return Briefcase
+      case 'instagram': return Camera
+      case 'freelance': return DollarSign
+      default: return Layers
+    }
+  }
+
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'habit': return 'text-green-500 bg-green-500/10'
+      case 'project': return 'text-blue-500 bg-blue-500/10'
+      case 'instagram': return 'text-pink-500 bg-pink-500/10'
+      case 'freelance': return 'text-emerald-500 bg-emerald-500/10'
+      default: return 'text-gray-500 bg-gray-500/10'
+    }
   }
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold mb-2">Templates & Presets</h1>
-        <p className="text-foreground-muted">Quick start with pre-built templates</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold mb-1">Templates & Presets</h1>
+          <p className="text-[var(--foreground-muted)]">Quick start with pre-built templates for habits, projects, content & clients</p>
+        </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2">
-        <button
-          onClick={() => setSelectedType('all')}
-          className={`px-4 py-2 rounded-lg transition ${
-            selectedType === 'all'
-              ? 'bg-accent-primary text-white'
-              : 'bg-surface text-foreground-muted hover:text-foreground'
-          }`}
-        >
-          All Templates
-        </button>
-        <button
-          onClick={() => setSelectedType('habit')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
-            selectedType === 'habit'
-              ? 'bg-accent-primary text-white'
-              : 'bg-surface text-foreground-muted hover:text-foreground'
-          }`}
-        >
-          <Target size={16} />
-          Habits
-        </button>
-        <button
-          onClick={() => setSelectedType('project')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
-            selectedType === 'project'
-              ? 'bg-accent-primary text-white'
-              : 'bg-surface text-foreground-muted hover:text-foreground'
-          }`}
-        >
-          <Briefcase size={16} />
-          Projects
-        </button>
-        <button
-          onClick={() => setSelectedType('instagram')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
-            selectedType === 'instagram'
-              ? 'bg-accent-primary text-white'
-              : 'bg-surface text-foreground-muted hover:text-foreground'
-          }`}
-        >
-          <Camera size={16} />
-          Instagram
-        </button>
-        <button
-          onClick={() => setSelectedType('freelance')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
-            selectedType === 'freelance'
-              ? 'bg-accent-primary text-white'
-              : 'bg-surface text-foreground-muted hover:text-foreground'
-          }`}
-        >
-          <DollarSign size={16} />
-          Freelance
-        </button>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border-subtle)]">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-[var(--accent-primary)]/10 rounded-lg">
+              <Layers size={20} className="text-[var(--accent-primary)]" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{stats.total}</p>
+              <p className="text-xs text-[var(--foreground-muted)]">Total</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border-subtle)]">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-500/10 rounded-lg">
+              <Target size={20} className="text-green-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{stats.habits}</p>
+              <p className="text-xs text-[var(--foreground-muted)]">Habits</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border-subtle)]">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-500/10 rounded-lg">
+              <Briefcase size={20} className="text-blue-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{stats.projects}</p>
+              <p className="text-xs text-[var(--foreground-muted)]">Projects</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border-subtle)]">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-pink-500/10 rounded-lg">
+              <Camera size={20} className="text-pink-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{stats.instagram}</p>
+              <p className="text-xs text-[var(--foreground-muted)]">Instagram</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border-subtle)]">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-emerald-500/10 rounded-lg">
+              <DollarSign size={20} className="text-emerald-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{stats.freelance}</p>
+              <p className="text-xs text-[var(--foreground-muted)]">Freelance</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Templates Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredTemplates.map(template => {
-          const Icon = template.icon
-          return (
-            <div
-              key={template.id}
-              className={`bg-gradient-to-br ${getColorClasses(template.color)} rounded-2xl p-6 border`}
+      {/* Search & Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--foreground-muted)]" />
+          <input
+            type="text"
+            placeholder="Search templates..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-[var(--surface)] border border-[var(--border-subtle)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/50"
+          />
+        </div>
+        <div className="flex gap-2">
+          {/* Type Filters */}
+          <div className="flex bg-[var(--surface)] rounded-xl p-1 border border-[var(--border-subtle)]">
+            {(['all', 'habit', 'project', 'instagram', 'freelance'] as TemplateType[]).map((type) => {
+              const TypeIcon = type === 'all' ? Layers : getTypeIcon(type)
+              return (
+                <button
+                  key={type}
+                  onClick={() => setSelectedType(type)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition ${
+                    selectedType === type
+                      ? 'bg-[var(--accent-primary)] text-white'
+                      : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
+                  }`}
+                >
+                  <TypeIcon size={14} />
+                  <span className="hidden sm:inline capitalize">{type}</span>
+                </button>
+              )
+            })}
+          </div>
+          {/* View Mode Toggle */}
+          <div className="flex bg-[var(--surface)] rounded-xl p-1 border border-[var(--border-subtle)]">
+            <button
+              onClick={() => setViewMode('cards')}
+              className={`p-2 rounded-lg transition ${viewMode === 'cards' ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'}`}
+              title="Card View"
             >
-              <div className="flex items-start justify-between mb-4">
-                <div className={`p-3 bg-${template.color}-500/20 rounded-xl`}>
-                  <Icon size={28} className={`text-${template.color}-500`} />
-                </div>
-                <span className="px-3 py-1 bg-surface rounded-full text-xs font-medium capitalize">
-                  {template.type}
-                </span>
-              </div>
+              <LayoutGrid size={18} />
+            </button>
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-lg transition ${viewMode === 'grid' ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'}`}
+              title="Grid View"
+            >
+              <Grid3X3 size={18} />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 rounded-lg transition ${viewMode === 'list' ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'}`}
+              title="List View"
+            >
+              <List size={18} />
+            </button>
+          </div>
+        </div>
+      </div>
 
-              <h3 className="text-xl font-bold mb-2">{template.name}</h3>
-              <p className="text-sm text-foreground-muted mb-4">{template.description}</p>
-
-              <div className="mb-4">
-                <div className="text-xs font-medium text-foreground-muted mb-2">
-                  Includes {template.items.length} items:
+      {/* Templates Display */}
+      {viewMode === 'cards' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredTemplates.map(template => {
+            const Icon = template.icon
+            const colors = getColorClasses(template.color)
+            const TypeIcon = getTypeIcon(template.type)
+            return (
+              <div
+                key={template.id}
+                className={`bg-gradient-to-br ${colors.bg} rounded-2xl p-5 border ${colors.border} hover:shadow-lg transition-all group`}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className={`p-3 ${colors.icon} rounded-xl`}>
+                    <Icon size={24} className={colors.text} />
+                  </div>
+                  <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${getTypeColor(template.type)}`}>
+                    <TypeIcon size={12} />
+                    <span className="capitalize">{template.type}</span>
+                  </div>
                 </div>
-                <div className="space-y-1 max-h-48 overflow-hidden">
-                  {template.items.slice(0, 6).map((item, index) => (
+
+                <h3 className="text-lg font-bold mb-1">{template.name}</h3>
+                <p className="text-sm text-[var(--foreground-muted)] mb-3 line-clamp-2">{template.description}</p>
+
+                <div className="flex items-center gap-2 text-xs text-[var(--foreground-muted)] mb-4">
+                  <Layers size={14} />
+                  <span>{template.items.length} items included</span>
+                </div>
+
+                <div className="space-y-1.5 mb-4 max-h-32 overflow-hidden">
+                  {template.items.slice(0, 4).map((item, index) => (
                     <div key={index} className="flex items-center gap-2 text-sm">
-                      <Check size={14} className="text-accent-success flex-shrink-0" />
-                      <span className="truncate">
-                        {item.name || item.title}
-                      </span>
+                      <Check size={14} className="text-[var(--accent-success)] flex-shrink-0" />
+                      <span className="truncate">{item.name || item.title}</span>
                     </div>
                   ))}
-                  {template.items.length > 6 && (
-                    <div className="text-xs text-foreground-muted pl-6">
-                      +{template.items.length - 6} more items
-                    </div>
+                  {template.items.length > 4 && (
+                    <p className="text-xs text-[var(--foreground-muted)] pl-6">+{template.items.length - 4} more</p>
                   )}
                 </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setPreviewTemplate(template)}
+                    className="flex-1 py-2.5 bg-[var(--surface)] border border-[var(--border-subtle)] rounded-xl hover:bg-[var(--background)] transition flex items-center justify-center gap-2 text-sm font-medium"
+                  >
+                    <Eye size={16} />
+                    Preview
+                  </button>
+                  <button
+                    onClick={() => applyTemplate(template)}
+                    disabled={applying === template.id}
+                    className="flex-1 py-2.5 bg-[var(--accent-primary)] text-white rounded-xl hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2 text-sm font-medium"
+                  >
+                    {applying === template.id ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Plus size={16} />
+                    )}
+                    Apply
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {viewMode === 'grid' && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          {filteredTemplates.map(template => {
+            const Icon = template.icon
+            const colors = getColorClasses(template.color)
+            return (
+              <div
+                key={template.id}
+                onClick={() => setPreviewTemplate(template)}
+                className={`bg-gradient-to-br ${colors.bg} rounded-xl p-4 border ${colors.border} hover:shadow-lg transition-all cursor-pointer group`}
+              >
+                <div className={`p-2.5 ${colors.icon} rounded-lg w-fit mb-3`}>
+                  <Icon size={20} className={colors.text} />
+                </div>
+                <h3 className="font-semibold text-sm mb-1 line-clamp-1">{template.name}</h3>
+                <p className="text-xs text-[var(--foreground-muted)] mb-2 line-clamp-2">{template.description}</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-[var(--foreground-muted)]">{template.items.length} items</span>
+                  <span className={`text-xs font-medium capitalize ${colors.text}`}>{template.type}</span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {viewMode === 'list' && (
+        <div className="space-y-2">
+          {filteredTemplates.map(template => {
+            const Icon = template.icon
+            const colors = getColorClasses(template.color)
+            const TypeIcon = getTypeIcon(template.type)
+            return (
+              <div
+                key={template.id}
+                className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border-subtle)] hover:shadow-md transition-all flex items-center gap-4"
+              >
+                <div className={`p-3 ${colors.icon} rounded-xl flex-shrink-0`}>
+                  <Icon size={24} className={colors.text} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-bold">{template.name}</h3>
+                    <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getTypeColor(template.type)}`}>
+                      <TypeIcon size={10} />
+                      {template.type}
+                    </span>
+                  </div>
+                  <p className="text-sm text-[var(--foreground-muted)] line-clamp-1">{template.description}</p>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-[var(--foreground-muted)] flex-shrink-0">
+                  <Layers size={16} />
+                  <span>{template.items.length}</span>
+                </div>
+                <div className="flex gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => setPreviewTemplate(template)}
+                    className="p-2 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg hover:bg-[var(--surface)] transition"
+                    title="Preview"
+                  >
+                    <Eye size={18} />
+                  </button>
+                  <button
+                    onClick={() => applyTemplate(template)}
+                    disabled={applying === template.id}
+                    className="px-4 py-2 bg-[var(--accent-primary)] text-white rounded-lg hover:opacity-90 transition disabled:opacity-50 flex items-center gap-2 text-sm font-medium"
+                  >
+                    {applying === template.id ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <Plus size={16} />
+                        Apply
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {filteredTemplates.length === 0 && (
+        <div className="text-center py-16 text-[var(--foreground-muted)]">
+          <Palette size={48} className="mx-auto mb-4 opacity-50" />
+          <p className="text-lg font-medium mb-1">No templates found</p>
+          <p className="text-sm">Try adjusting your search or filter</p>
+        </div>
+      )}
+
+      {/* Preview Modal */}
+      {previewTemplate && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setPreviewTemplate(null)}>
+          <div 
+            className="bg-[var(--surface)] rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className={`bg-gradient-to-r ${getColorClasses(previewTemplate.color).bg} p-6 border-b border-[var(--border-subtle)]`}>
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-4">
+                  <div className={`p-3 ${getColorClasses(previewTemplate.color).icon} rounded-xl`}>
+                    <previewTemplate.icon size={28} className={getColorClasses(previewTemplate.color).text} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h2 className="text-xl font-bold">{previewTemplate.name}</h2>
+                      <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getTypeColor(previewTemplate.type)}`}>
+                        {previewTemplate.type}
+                      </span>
+                    </div>
+                    <p className="text-sm text-[var(--foreground-muted)]">{previewTemplate.description}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setPreviewTemplate(null)}
+                  className="p-2 hover:bg-[var(--background)] rounded-lg transition"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto max-h-[50vh]">
+              <div className="flex items-center gap-2 mb-4">
+                <Layers size={18} className="text-[var(--foreground-muted)]" />
+                <span className="font-medium">{previewTemplate.items.length} items included</span>
               </div>
 
+              <div className="space-y-2">
+                {previewTemplate.items.map((item, index) => (
+                  <div key={index} className="bg-[var(--background)] rounded-xl p-4 border border-[var(--border-subtle)]">
+                    <div className="flex items-start gap-3">
+                      <div className="p-1.5 bg-[var(--accent-success)]/10 rounded-lg mt-0.5">
+                        <Check size={14} className="text-[var(--accent-success)]" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium mb-1">{item.name || item.title}</h4>
+                        {item.description && (
+                          <p className="text-sm text-[var(--foreground-muted)]">{item.description}</p>
+                        )}
+                        {item.hook && (
+                          <p className="text-sm text-[var(--foreground-muted)] mt-1">
+                            <span className="font-medium">Hook:</span> {item.hook}
+                          </p>
+                        )}
+                        {/* Show additional details based on type */}
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {item.emoji && (
+                            <span className="text-lg">{item.emoji}</span>
+                          )}
+                          {item.category && (
+                            <span className="px-2 py-0.5 bg-[var(--surface)] rounded text-xs">{item.category}</span>
+                          )}
+                          {item.type && previewTemplate.type === 'habit' && (
+                            <span className="px-2 py-0.5 bg-blue-500/10 text-blue-500 rounded text-xs">{item.type}</span>
+                          )}
+                          {item.target_value && (
+                            <span className="px-2 py-0.5 bg-green-500/10 text-green-500 rounded text-xs">
+                              Target: {item.target_value} {item.target_unit}
+                            </span>
+                          )}
+                          {item.priority && (
+                            <span className={`px-2 py-0.5 rounded text-xs ${
+                              item.priority === 'high' ? 'bg-red-500/10 text-red-500' :
+                              item.priority === 'medium' ? 'bg-yellow-500/10 text-yellow-500' :
+                              'bg-gray-500/10 text-gray-500'
+                            }`}>
+                              {item.priority} priority
+                            </span>
+                          )}
+                          {item.format && (
+                            <span className="px-2 py-0.5 bg-pink-500/10 text-pink-500 rounded text-xs capitalize">{item.format}</span>
+                          )}
+                          {item.platform && (
+                            <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded text-xs capitalize">{item.platform}</span>
+                          )}
+                          {item.value && (
+                            <span className="px-2 py-0.5 bg-green-500/10 text-green-500 rounded text-xs">
+                              {item.currency === 'INR' ? '₹' : item.currency === 'USD' ? '$' : '€'}{item.value.toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 border-t border-[var(--border-subtle)] flex gap-3">
               <button
-                onClick={() => applyTemplate(template)}
-                disabled={applying === template.id}
-                className="w-full py-3 bg-accent-primary text-white rounded-xl hover:opacity-90 transition disabled:opacity-50 font-medium flex items-center justify-center gap-2"
+                onClick={() => setPreviewTemplate(null)}
+                className="flex-1 py-3 bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl hover:bg-[var(--surface)] transition font-medium"
               >
-                {applying === template.id ? (
+                Cancel
+              </button>
+              <button
+                onClick={() => applyTemplate(previewTemplate)}
+                disabled={applying === previewTemplate.id}
+                className="flex-1 py-3 bg-[var(--accent-primary)] text-white rounded-xl hover:opacity-90 transition disabled:opacity-50 font-medium flex items-center justify-center gap-2"
+              >
+                {applying === previewTemplate.id ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     Applying...
@@ -996,14 +853,7 @@ export default function TemplatesPage() {
                 )}
               </button>
             </div>
-          )
-        })}
-      </div>
-
-      {filteredTemplates.length === 0 && (
-        <div className="text-center py-12 text-foreground-muted">
-          <Palette size={48} className="mx-auto mb-4 opacity-50" />
-          <p>No templates found for this category</p>
+          </div>
         </div>
       )}
     </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/Toast'
 import { Trophy, Medal, Crown, Flame, Share2, Users, Calendar, Zap, Search, TrendingUp, Lock } from 'lucide-react'
@@ -8,6 +8,8 @@ import { ProfileIcon } from '@/lib/profile-icons'
 import { BadgeDisplay } from '@/lib/badges'
 import Link from 'next/link'
 import { useSystemSettings } from '@/lib/useSystemSettings'
+import { useDebounce } from '@/lib/hooks/use-debounce'
+import { cache, cacheKeys, cacheTTL } from '@/lib/cache'
 
 interface LeaderboardEntry {
   user_id: string
@@ -32,30 +34,10 @@ export default function LeaderboardPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [userStats, setUserStats] = useState({ rank: 0, completions: 0, streak: 0, xp: 0, level: 1 })
   const [searchQuery, setSearchQuery] = useState('')
+  const debouncedSearchQuery = useDebounce(searchQuery, 300)
   const { settings: systemSettings, loading: settingsLoading } = useSystemSettings()
 
-  useEffect(() => {
-    if (!settingsLoading && systemSettings.leaderboard_enabled) {
-      fetchLeaderboard()
-    }
-  }, [activeTab, settingsLoading, systemSettings.leaderboard_enabled])
-
-  // Check if leaderboard is disabled
-  if (!settingsLoading && !systemSettings.leaderboard_enabled) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <div className="p-4 bg-yellow-500/10 rounded-full mb-4">
-          <Lock size={48} className="text-yellow-500" />
-        </div>
-        <h1 className="text-2xl font-bold mb-2">Leaderboard Unavailable</h1>
-        <p className="text-foreground-muted max-w-md">
-          The leaderboard is currently disabled by the administrator. Please check back later.
-        </p>
-      </div>
-    )
-  }
-
-  const fetchLeaderboard = async () => {
+  const fetchLeaderboard = useCallback(async () => {
     setLoading(true)
     try {
       const supabase = createClient()
@@ -63,6 +45,25 @@ export default function LeaderboardPage() {
       if (!user) { setLoading(false); return }
       
       setCurrentUserId(user.id)
+      
+      // Check cache first
+      const cacheKey = cacheKeys.leaderboard(activeTab)
+      const cachedData = cache.get<LeaderboardEntry[]>(cacheKey)
+      if (cachedData) {
+        setLeaderboard(cachedData)
+        const currentUser = cachedData.find(e => e.user_id === user.id)
+        if (currentUser) {
+          setUserStats({
+            rank: currentUser.rank,
+            completions: currentUser.completions,
+            streak: currentUser.streak,
+            xp: currentUser.xp,
+            level: currentUser.level
+          })
+        }
+        setLoading(false)
+        return
+      }
 
       // Date ranges
       const today = new Date()
@@ -120,6 +121,9 @@ export default function LeaderboardPage() {
 
       // Set full leaderboard (not sliced) to preserve all ranks
       setLeaderboard(leaderboardData)
+      
+      // Cache the leaderboard data for 5 minutes
+      cache.set(cacheKey, leaderboardData, { ttl: cacheTTL.medium })
 
       // Current user stats - get from full leaderboard to ensure correct rank
       const currentUser = leaderboardData.find(e => e.isCurrentUser)
@@ -137,6 +141,27 @@ export default function LeaderboardPage() {
     } finally {
       setLoading(false)
     }
+  }, [activeTab])
+
+  useEffect(() => {
+    if (!settingsLoading && systemSettings.leaderboard_enabled) {
+      fetchLeaderboard()
+    }
+  }, [activeTab, settingsLoading, systemSettings.leaderboard_enabled, fetchLeaderboard])
+
+  // Check if leaderboard is disabled
+  if (!settingsLoading && !systemSettings.leaderboard_enabled) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <div className="p-4 bg-yellow-500/10 rounded-full mb-4">
+          <Lock size={48} className="text-yellow-500" />
+        </div>
+        <h1 className="text-2xl font-bold mb-2">Leaderboard Unavailable</h1>
+        <p className="text-foreground-muted max-w-md">
+          The leaderboard is currently disabled by the administrator. Please check back later.
+        </p>
+      </div>
+    )
   }
 
   const shareAchievement = () => {
@@ -157,8 +182,8 @@ export default function LeaderboardPage() {
     return 'bg-surface border-border-subtle'
   }
 
-  const filteredLeaderboard = searchQuery 
-    ? leaderboard.filter(e => e.username.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredLeaderboard = debouncedSearchQuery 
+    ? leaderboard.filter(e => e.username.toLowerCase().includes(debouncedSearchQuery.toLowerCase()))
     : leaderboard
 
   return (

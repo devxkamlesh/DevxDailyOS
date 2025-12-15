@@ -2,6 +2,7 @@
 
 import React, { Component, ErrorInfo, ReactNode } from 'react'
 import { AlertTriangle, RefreshCw, Home, Bug } from 'lucide-react'
+import { parseError, getErrorIcon, type UserFriendlyError } from '@/lib/error-messages'
 
 interface Props {
   children: ReactNode
@@ -13,17 +14,19 @@ interface State {
   hasError: boolean
   error: Error | null
   errorInfo: ErrorInfo | null
+  friendlyError: UserFriendlyError | null
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props)
-    this.state = { hasError: false, error: null, errorInfo: null }
+    this.state = { hasError: false, error: null, errorInfo: null, friendlyError: null }
   }
 
   static getDerivedStateFromError(error: Error): State {
     // Update state so the next render will show the fallback UI
-    return { hasError: true, error, errorInfo: null }
+    const friendlyError = parseError(error)
+    return { hasError: true, error, errorInfo: null, friendlyError }
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
@@ -46,7 +49,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   handleReset = () => {
-    this.setState({ hasError: false, error: null, errorInfo: null })
+    this.setState({ hasError: false, error: null, errorInfo: null, friendlyError: null })
   }
 
   handleReload = () => {
@@ -60,21 +63,24 @@ export class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback
       }
 
-      // Default error UI
+      // Default error UI with user-friendly messages
+      const { friendlyError } = this.state
+      const errorIcon = friendlyError ? getErrorIcon(friendlyError.category) : '❓'
+      
       return (
         <div className="min-h-screen bg-background flex items-center justify-center p-4">
           <div className="max-w-md w-full">
             <div className="bg-surface p-8 rounded-2xl border border-border-subtle text-center">
               <div className="p-4 bg-red-500/20 rounded-full w-fit mx-auto mb-6">
-                <AlertTriangle size={32} className="text-red-400" />
+                <span className="text-4xl">{errorIcon}</span>
               </div>
               
               <h1 className="text-2xl font-bold text-foreground mb-2">
-                Something went wrong
+                {friendlyError?.title || 'Something went wrong'}
               </h1>
               
               <p className="text-foreground-muted mb-6">
-                We encountered an unexpected error. Don't worry, your data is safe.
+                {friendlyError?.message || 'We encountered an unexpected error. Don\'t worry, your data is safe.'}
               </p>
 
               <div className="space-y-3 mb-6">
@@ -101,6 +107,15 @@ export class ErrorBoundary extends Component<Props, State> {
                   <Home size={18} />
                   Go to Dashboard
                 </a>
+                
+                {friendlyError?.action && friendlyError?.actionLabel && (
+                  <a
+                    href={friendlyError.action}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-accent-primary/10 text-accent-primary border border-accent-primary/30 rounded-xl hover:bg-accent-primary/20 transition font-medium"
+                  >
+                    {friendlyError.actionLabel}
+                  </a>
+                )}
               </div>
 
               {/* Error details in development */}

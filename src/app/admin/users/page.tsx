@@ -18,7 +18,6 @@ interface User {
   avatar_url: string | null
   created_at: string
   is_public: boolean
-  show_on_leaderboard: boolean
   bio?: string
   website?: string
   timezone?: string
@@ -820,14 +819,7 @@ function ProfileCard({ data }: { data: DetailedUserData }) {
                 {data.is_public ? 'YES' : 'NO'}
               </span>
             </div>
-            <div className="flex items-center justify-between">
-              <span>Leaderboard</span>
-              <span className={`px-2 py-1 rounded-lg text-sm font-medium ${
-                data.show_on_leaderboard ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
-              }`}>
-                {data.show_on_leaderboard ? 'VISIBLE' : 'HIDDEN'}
-              </span>
-            </div>
+
           </div>
         </div>
       </div>

@@ -22,7 +22,7 @@ export interface RealtimeOptions {
   filter?: string;
 }
 
-type ChangeHandler<T> = (payload: RealtimePostgresChangesPayload<T>) => void;
+type ChangeHandler<T extends Record<string, unknown>> = (payload: RealtimePostgresChangesPayload<T>) => void;
 
 // ============================================================================
 // REALTIME MANAGER
@@ -49,26 +49,18 @@ class RealtimeManager {
     if (!channel) {
       channel = this.supabase.channel(channelName);
       
-      const config: {
-        event: RealtimeEvent;
-        schema: string;
-        table: string;
-        filter?: string;
-      } = {
-        event,
-        schema: 'public',
-        table,
-      };
-      
-      if (filter) {
-        config.filter = filter;
-      }
+      // Build the filter config for postgres_changes
+      const filterConfig = filter 
+        ? { event, schema: 'public' as const, table, filter }
+        : { event, schema: 'public' as const, table };
 
-      channel
+      // Use type assertion to work around strict Supabase types
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (channel as any)
         .on(
           'postgres_changes',
-          config,
-          (payload) => handler(payload as RealtimePostgresChangesPayload<T>)
+          filterConfig,
+          (payload: unknown) => handler(payload as RealtimePostgresChangesPayload<T>)
         )
         .subscribe();
 

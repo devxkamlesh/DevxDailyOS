@@ -517,98 +517,113 @@ export default function ShopPage() {
               <p className="text-sm text-foreground-muted">Check back later!</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {coinPackages.map((pkg) => {
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {coinPackages.map((pkg, index) => {
                 const discount = calculatePackageDiscount(pkg.price_inr)
                 const finalPrice = pkg.price_inr - discount
+                const totalCoins = pkg.coins + pkg.bonus_coins
+                
+                // Different gradient colors for each package
+                const gradients = [
+                  'from-blue-500 to-cyan-500',
+                  'from-purple-500 to-pink-500',
+                  'from-yellow-500 to-orange-500',
+                  'from-emerald-500 to-teal-500'
+                ]
+                const gradient = gradients[index % gradients.length]
                 
                 return (
                   <div
                     key={pkg.id}
-                    className={`relative bg-surface rounded-2xl border-2 p-5 transition-all hover:scale-[1.02] ${
+                    className={`relative overflow-hidden rounded-2xl transition-all hover:scale-[1.02] ${
                       pkg.is_popular
-                        ? 'border-yellow-500/50 bg-yellow-500/5 shadow-lg shadow-yellow-500/10'
-                        : 'border-border-subtle hover:border-accent-primary/50'
+                        ? 'ring-2 ring-yellow-500 ring-offset-2 ring-offset-background'
+                        : ''
                     }`}
                   >
-                    {/* Badge */}
-                    {pkg.badge && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-yellow-500 text-black text-xs font-bold rounded-full">
-                        {pkg.badge}
-                      </div>
-                    )}
-
-                    {/* Discount Badge */}
-                    {discount > 0 && (
-                      <div className="absolute top-3 left-3 px-2 py-1 bg-accent-success text-white text-xs font-bold rounded-full">
-                        -{appliedCoupon?.discount_type === 'percentage' ? `${appliedCoupon.discount_value}%` : `₹${discount / 100}`}
-                      </div>
-                    )}
-
-                    {/* Popular Star */}
-                    {pkg.is_popular && (
-                      <div className="absolute top-3 right-3">
-                        <Star className="text-yellow-500 fill-yellow-500" size={20} />
-                      </div>
-                    )}
-
-                    {/* Coins Display */}
-                    <div className="text-center mb-4 pt-2">
-                      <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-yellow-500/20 to-orange-500/20 rounded-2xl mb-3">
-                        <Coins className="text-yellow-500" size={32} />
-                      </div>
-                      <h3 className="font-bold text-lg">{pkg.name}</h3>
-                      {pkg.description && (
-                        <p className="text-sm text-foreground-muted mt-1">{pkg.description}</p>
-                      )}
-                    </div>
-
-                    {/* Coins Info */}
-                    <div className="bg-background rounded-xl p-3 mb-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-foreground-muted">Base Coins</span>
-                        <span className="font-bold">{pkg.coins.toLocaleString()}</span>
-                      </div>
-                      {pkg.bonus_coins > 0 && (
-                        <div className="flex items-center justify-between text-green-500">
-                          <span>Bonus</span>
-                          <span className="font-bold">+{pkg.bonus_coins.toLocaleString()}</span>
+                    {/* Background Gradient */}
+                    <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-10`} />
+                    
+                    {/* Content */}
+                    <div className="relative bg-surface/80 backdrop-blur-sm border border-border-subtle rounded-2xl p-4">
+                      {/* Badge */}
+                      {pkg.badge && (
+                        <div className={`absolute -top-0 -right-0 px-3 py-1 bg-gradient-to-r ${gradient} text-white text-[10px] font-bold rounded-bl-xl rounded-tr-xl`}>
+                          {pkg.badge}
                         </div>
                       )}
-                      <div className="border-t border-border-subtle mt-2 pt-2 flex items-center justify-between">
-                        <span className="font-medium">Total</span>
-                        <span className="font-bold text-yellow-500">
-                          {(pkg.coins + pkg.bonus_coins).toLocaleString()}
+
+                      {/* Discount Badge */}
+                      {discount > 0 && (
+                        <div className="absolute top-2 left-2 px-2 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded-full">
+                          -{appliedCoupon?.discount_type === 'percentage' ? `${appliedCoupon.discount_value}%` : `₹${discount / 100}`}
+                        </div>
+                      )}
+
+                      {/* Coin Stack Visual */}
+                      <div className="flex justify-center mb-3 pt-2">
+                        <div className="relative">
+                          <div className={`w-14 h-14 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center shadow-lg`}>
+                            <Coins className="text-white" size={28} />
+                          </div>
+                          {pkg.bonus_coins > 0 && (
+                            <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
+                              <Gift size={12} className="text-white" />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Coins Amount */}
+                      <div className="text-center mb-3">
+                        <div className="text-2xl font-black text-yellow-500">{totalCoins.toLocaleString()}</div>
+                        <div className="text-xs text-foreground-muted">
+                          {pkg.bonus_coins > 0 ? (
+                            <span>{pkg.coins} + <span className="text-green-500">{pkg.bonus_coins} bonus</span></span>
+                          ) : (
+                            <span>coins</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Package Name */}
+                      <div className="text-center mb-3">
+                        <h3 className="font-bold text-sm">{pkg.name}</h3>
+                      </div>
+
+                      {/* Price & Buy Button */}
+                      <button
+                        onClick={() => handleBuyCoins(pkg)}
+                        disabled={processingPayment === pkg.id}
+                        className={`w-full py-2.5 rounded-xl font-bold transition flex items-center justify-center gap-1.5 text-sm ${
+                          processingPayment === pkg.id
+                            ? 'bg-foreground-muted/20 cursor-wait text-foreground-muted'
+                            : `bg-gradient-to-r ${gradient} text-white hover:opacity-90 shadow-lg`
+                        }`}
+                      >
+                        {processingPayment === pkg.id ? (
+                          <span>Processing...</span>
+                        ) : (
+                          <>
+                            {discount > 0 ? (
+                              <>
+                                <span className="line-through opacity-60 text-xs">₹{(pkg.price_inr / 100).toFixed(0)}</span>
+                                <span className="text-base">₹{(finalPrice / 100).toFixed(0)}</span>
+                              </>
+                            ) : (
+                              <span className="text-base">₹{(pkg.price_inr / 100).toFixed(0)}</span>
+                            )}
+                          </>
+                        )}
+                      </button>
+
+                      {/* Value indicator */}
+                      <div className="text-center mt-2">
+                        <span className="text-[10px] text-foreground-muted">
+                          ₹{((pkg.price_inr / 100) / totalCoins).toFixed(2)}/coin
                         </span>
                       </div>
                     </div>
-
-                    {/* Price & Buy Button */}
-                    <button
-                      onClick={() => handleBuyCoins(pkg)}
-                      disabled={processingPayment === pkg.id}
-                      className={`w-full py-3 rounded-xl font-bold transition flex items-center justify-center gap-2 ${
-                        processingPayment === pkg.id
-                          ? 'bg-foreground-muted/20 cursor-wait'
-                          : 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:opacity-90'
-                      }`}
-                    >
-                      {processingPayment === pkg.id ? (
-                        <span>Processing...</span>
-                      ) : (
-                        <>
-                          <IndianRupee size={18} />
-                          {discount > 0 ? (
-                            <>
-                              <span className="line-through opacity-50">₹{(pkg.price_inr / 100).toFixed(0)}</span>
-                              <span>₹{(finalPrice / 100).toFixed(0)}</span>
-                            </>
-                          ) : (
-                            <span>₹{(pkg.price_inr / 100).toFixed(0)}</span>
-                          )}
-                        </>
-                      )}
-                    </button>
                   </div>
                 )
               })}

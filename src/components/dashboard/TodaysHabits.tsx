@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { CheckCircle2, Circle, Target, TrendingUp, Sunrise, Briefcase, Moon, Heart, Zap, Plus, Minus, Timer } from 'lucide-react'
 import Link from 'next/link'
+import { useRealtimeHabitLogs } from '@/lib/realtime'
 
 interface Habit {
   id: string
@@ -37,8 +38,9 @@ export default function TodaysHabits() {
   const router = useRouter()
   const [habits, setHabits] = useState<Habit[]>([])
   const [loading, setLoading] = useState(true)
+  const [userId, setUserId] = useState<string | null>(null)
 
-  const fetchHabits = async () => {
+  const fetchHabits = useCallback(async () => {
     try {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
@@ -46,7 +48,8 @@ export default function TodaysHabits() {
         setLoading(false)
         return
       }
-
+      
+      setUserId(user.id)
       const today = new Date().toISOString().split('T')[0]
 
       const { data: habitsData } = await supabase
@@ -90,11 +93,17 @@ export default function TodaysHabits() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     fetchHabits()
-  }, [])
+  }, [fetchHabits])
+
+  // Real-time updates for habit logs
+  useRealtimeHabitLogs(userId, (log) => {
+    // Refresh habits when a log is updated
+    fetchHabits()
+  })
 
   const [processing, setProcessing] = useState<Set<string>>(new Set())
 

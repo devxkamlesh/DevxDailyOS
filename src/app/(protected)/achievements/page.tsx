@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Trophy, Award, Zap, Target, Star, Crown, Flame, Calendar, CheckCircle2, Lock, Coins, Gift } from 'lucide-react'
+import { Trophy, Award, Zap, Target, Star, Crown, Flame, CheckCircle2, Lock, Coins, Gift } from 'lucide-react'
 import { ACHIEVEMENTS, getClaimedAchievements, claimAchievement, updateUserStreak } from '@/lib/achievements'
 
 interface Achievement {
@@ -18,18 +18,6 @@ interface Achievement {
   coinReward: number
   xpReward: number
   category: 'completion' | 'streak' | 'perfect' | 'milestone'
-}
-
-interface WeeklyChallenge {
-  id: string
-  title: string
-  description: string
-  progress: number
-  target: number
-  coinReward: number
-  icon: any
-  color: string
-  endsIn: string
 }
 
 interface UserStats {
@@ -53,7 +41,6 @@ export default function AchievementsPage() {
     level: 1
   })
   const [achievements, setAchievements] = useState<Achievement[]>([])
-  const [weeklyChallenges, setWeeklyChallenges] = useState<WeeklyChallenge[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -147,21 +134,35 @@ export default function AchievementsPage() {
 
       // Map achievement definitions to UI with progress
       const iconMap: Record<string, any> = {
+        // Completion
         first_step: CheckCircle2, early_bird: Target, getting_started: Target,
         consistent: Award, dedicated: Award, habit_master: Crown,
-        champion: Trophy, legend: Trophy, streak_starter: Flame,
-        week_warrior: Flame, two_week_hero: Flame, month_master: Calendar,
-        quarter_champion: Zap, perfect_start: Star, perfectionist: Star,
-        flawless: Star, perfect_month: Star, perfect_master: Star
+        champion: Trophy, legend: Trophy, titan: Crown, mythic_achiever: Star,
+        transcendent: Zap, eternal: Crown,
+        // Streak
+        streak_starter: Flame, week_warrior: Flame, two_week_hero: Flame, 
+        month_master: Flame, quarter_champion: Zap, half_year_hero: Trophy,
+        year_legend: Crown, unstoppable: Flame, immortal_streak: Star,
+        // Perfect
+        perfect_start: Star, perfectionist: Star, flawless: Star, 
+        perfect_month: Star, perfect_master: Star, perfect_century: Trophy,
+        perfect_elite: Crown, perfect_legend: Zap, perfect_immortal: Crown
       }
       
       const colorMap: Record<string, string> = {
+        // Completion colors
         first_step: 'text-green-500', early_bird: 'text-blue-500', getting_started: 'text-cyan-500',
         consistent: 'text-indigo-500', dedicated: 'text-purple-500', habit_master: 'text-yellow-500',
-        champion: 'text-orange-500', legend: 'text-red-500', streak_starter: 'text-orange-500',
-        week_warrior: 'text-red-500', two_week_hero: 'text-pink-500', month_master: 'text-purple-500',
-        quarter_champion: 'text-yellow-500', perfect_start: 'text-cyan-500', perfectionist: 'text-blue-500',
-        flawless: 'text-indigo-500', perfect_month: 'text-purple-500', perfect_master: 'text-yellow-500'
+        titan: 'text-orange-500', mythic_achiever: 'text-pink-500', transcendent: 'text-red-500', eternal: 'text-amber-400',
+        champion: 'text-orange-500', legend: 'text-red-500',
+        // Streak colors
+        streak_starter: 'text-orange-500', week_warrior: 'text-red-500', two_week_hero: 'text-pink-500', 
+        month_master: 'text-purple-500', quarter_champion: 'text-yellow-500', half_year_hero: 'text-cyan-500',
+        year_legend: 'text-amber-400', unstoppable: 'text-red-600', immortal_streak: 'text-pink-400',
+        // Perfect colors
+        perfect_start: 'text-cyan-500', perfectionist: 'text-blue-500', flawless: 'text-indigo-500', 
+        perfect_month: 'text-purple-500', perfect_master: 'text-yellow-500', perfect_century: 'text-orange-500',
+        perfect_elite: 'text-pink-500', perfect_legend: 'text-red-500', perfect_immortal: 'text-amber-400'
       }
 
       const achievementsList: Achievement[] = ACHIEVEMENTS.map(a => {
@@ -197,35 +198,6 @@ export default function AchievementsPage() {
       })
 
       setAchievements(achievementsList)
-
-      // Weekly Challenges
-      const now = new Date()
-      const weekStart = new Date(now)
-      weekStart.setDate(now.getDate() - now.getDay())
-      const weekEnd = new Date(weekStart)
-      weekEnd.setDate(weekStart.getDate() + 6)
-      
-      const daysUntilWeekEnd = Math.ceil((weekEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-      const endsIn = `${daysUntilWeekEnd} day${daysUntilWeekEnd !== 1 ? 's' : ''}`
-
-      const weekLogs = logs.filter(log => {
-        const logDate = new Date(log.date)
-        return logDate >= weekStart && logDate <= weekEnd
-      })
-
-      const weekCompletions = weekLogs.length
-      const weekPerfectDays = Array.from(new Set(weekLogs.map(l => l.date))).filter(date => {
-        const dayLogs = weekLogs.filter(l => l.date === date)
-        return dayLogs.length >= habitCount
-      }).length
-
-      setWeeklyChallenges([
-        { id: 'week_10', title: 'Complete 10 Habits', description: 'Complete 10 habits this week', progress: Math.min(weekCompletions, 10), target: 10, coinReward: 25, icon: Target, color: 'text-blue-500', endsIn },
-        { id: 'week_25', title: 'Complete 25 Habits', description: 'Complete 25 habits this week', progress: Math.min(weekCompletions, 25), target: 25, coinReward: 50, icon: Trophy, color: 'text-purple-500', endsIn },
-        { id: 'week_perfect_3', title: '3 Perfect Days', description: 'Have 3 perfect days this week', progress: Math.min(weekPerfectDays, 3), target: 3, coinReward: 40, icon: Star, color: 'text-yellow-500', endsIn },
-        { id: 'week_streak_7', title: '7 Day Streak', description: 'Maintain a 7 day streak', progress: Math.min(currentStreak, 7), target: 7, coinReward: 60, icon: Flame, color: 'text-orange-500', endsIn },
-      ])
-
       setLoading(false)
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -329,60 +301,6 @@ export default function AchievementsPage() {
             </div>
           </div>
 
-          {/* Weekly Challenges */}
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <Calendar size={20} className="text-accent-primary" />
-              <h2 className="text-xl font-bold">Weekly Challenges</h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {weeklyChallenges.map(challenge => {
-                const Icon = challenge.icon
-                const isCompleted = challenge.progress >= challenge.target
-                return (
-                  <div
-                    key={challenge.id}
-                    className={`p-4 rounded-xl border-2 transition-all ${
-                      isCompleted
-                        ? 'bg-accent-success/10 border-accent-success/50'
-                        : 'bg-surface border-border-subtle'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <Icon size={24} className={challenge.color} />
-                      <div className="flex items-center gap-1 text-xs font-bold text-yellow-500">
-                        <Coins size={14} />
-                        {challenge.coinReward}
-                      </div>
-                    </div>
-                    <h3 className="font-bold text-sm mb-1">{challenge.title}</h3>
-                    <p className="text-xs text-foreground-muted mb-3">{challenge.description}</p>
-                    
-                    {isCompleted ? (
-                      <div className="flex items-center gap-2 text-xs font-semibold text-accent-success">
-                        <CheckCircle2 size={14} />
-                        Completed!
-                      </div>
-                    ) : (
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-xs">
-                          <span className="text-foreground-muted">{challenge.progress}/{challenge.target}</span>
-                          <span className="text-foreground-muted">Ends in {challenge.endsIn}</span>
-                        </div>
-                        <div className="h-1.5 bg-background rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-accent-primary transition-all"
-                            style={{ width: `${(challenge.progress / challenge.target) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
           {/* Achievements by Category */}
           {categories.map(category => {
             const categoryAchievements = achievements.filter(a => a.category === category.id)
@@ -395,8 +313,15 @@ export default function AchievementsPage() {
                   <h2 className="text-xl font-bold">{category.label}</h2>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {categoryAchievements.map(achievement => {
+                  {categoryAchievements.map((achievement, index) => {
                     const Icon = achievement.icon
+                    // Find the index of the first locked achievement in this category
+                    const firstLockedIndex = categoryAchievements.findIndex(a => !a.unlocked)
+                    const nearCurrentIndex = firstLockedIndex === -1 ? categoryAchievements.length - 1 : firstLockedIndex
+                    // Show clearly: unlocked achievements + next 2 locked achievements
+                    const isNearCurrent = achievement.unlocked || index <= nearCurrentIndex + 1
+                    const shouldBlur = !isNearCurrent
+                    
                     return (
                       <div
                         key={achievement.id}
@@ -404,7 +329,7 @@ export default function AchievementsPage() {
                           achievement.unlocked
                             ? 'bg-surface border-accent-success/50'
                             : 'bg-surface border-border-subtle'
-                        }`}
+                        } ${shouldBlur ? 'blur-sm' : ''}`}
                       >
                         {!achievement.unlocked && (
                           <div className="absolute top-4 right-4">

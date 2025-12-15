@@ -53,9 +53,17 @@ export interface Project {
   slug: string | null
   description: string | null
   status: 'idea' | 'building' | 'shipped'
+  priority: 'low' | 'medium' | 'high' | 'urgent' | null
+  category: string | null
   tech_stack: string[] | null
   live_url: string | null
   github_url: string | null
+  due_date: string | null
+  estimated_hours: number | null
+  actual_hours: number | null
+  is_pinned: boolean
+  is_archived: boolean
+  notes: string | null
   created_at: string
   updated_at: string
 }
@@ -82,10 +90,17 @@ export interface InstagramPost {
   hook: string | null
   caption: string | null
   hashtags: string | null
-  format: 'reel' | 'post' | 'story'
+  format: 'reel' | 'post' | 'story' | 'carousel'
   status: 'idea' | 'draft' | 'scheduled' | 'posted'
+  category: string | null
+  thumbnail_idea: string | null
+  scheduled_date: string | null
+  scheduled_time: string | null
   scheduled_for: string | null
   posted_at: string | null
+  script: string | null
+  is_starred: boolean
+  notes: string | null
   created_at: string
   updated_at: string
 }
@@ -94,14 +109,19 @@ export interface FreelanceClient {
   id: string
   user_id: string
   name: string
-  platform: 'upwork' | 'fiverr' | 'dm' | 'other' | null
+  platform: 'upwork' | 'fiverr' | 'linkedin' | 'twitter' | 'dm' | 'referral' | 'other' | null
   project_title: string | null
   value: number | null
   currency: string
   stage: 'lead' | 'in_talk' | 'proposal' | 'active' | 'done'
+  priority: 'low' | 'medium' | 'high' | 'urgent' | null
+  email: string | null
+  phone: string | null
+  website: string | null
   next_action: string | null
   next_action_date: string | null
   notes: string | null
+  is_starred: boolean
   created_at: string
   updated_at: string
 }
@@ -283,4 +303,60 @@ export interface WeeklyChallengeClaim {
   coins_awarded: number
   xp_awarded: number
   claimed_at: string
+}
+
+
+// Feedback system
+export interface Feedback {
+  id: string
+  user_id: string | null
+  type: 'bug' | 'feature' | 'improvement' | 'other'
+  title: string
+  description: string
+  priority: 'low' | 'medium' | 'high' | 'urgent'
+  status: 'pending' | 'reviewing' | 'planned' | 'in_progress' | 'completed' | 'rejected'
+  admin_notes: string | null
+  page_url: string | null
+  user_agent: string | null
+  created_at: string
+  updated_at: string
+}
+
+// Announcements system
+export interface Announcement {
+  id: string
+  title: string
+  content: string
+  type: 'info' | 'warning' | 'success' | 'error' | 'update'
+  is_active: boolean
+  is_dismissible: boolean
+  show_on_dashboard: boolean
+  priority: number
+  target_audience: 'all' | 'free' | 'premium' | 'new_users'
+  start_date: string
+  end_date: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface AnnouncementDismissal {
+  id: string
+  user_id: string
+  announcement_id: string
+  dismissed_at: string
+}
+
+// System logs
+export interface SystemLog {
+  id: string
+  level: 'debug' | 'info' | 'warn' | 'error' | 'fatal'
+  category: string
+  message: string
+  details: Record<string, any> | null
+  user_id: string | null
+  page_url: string | null
+  user_agent: string | null
+  ip_address: string | null
+  created_at: string
 }

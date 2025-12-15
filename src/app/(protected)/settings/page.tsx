@@ -3,8 +3,9 @@
 import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/Toast'
-import { User, Mail, Globe, Eye, EyeOff, Save, Shield, Bell, Palette, Lock, Download, Clock, Check, ShoppingCart } from 'lucide-react'
+import { User, Mail, Globe, Eye, EyeOff, Save, Shield, Bell, Palette, Lock, Clock, Check, ShoppingCart, FileJson, FileSpreadsheet } from 'lucide-react'
 import { ProfileIcon, getIconComponent } from '@/lib/profile-icons'
+import { useDataExport } from '@/lib/data-export'
 import Link from 'next/link'
 
 interface Profile {
@@ -16,7 +17,6 @@ interface Profile {
   bio: string | null
   website: string | null
   is_public: boolean
-  show_on_leaderboard: boolean
   timezone: string
 }
 
@@ -66,9 +66,11 @@ const getIconDisplayName = (iconId: string): string => {
 
 export default function SettingsPage() {
   const { showToast } = useToast()
+  const [userId, setUserId] = useState<string | null>(null)
+  const { exportData: exportWithLibrary } = useDataExport(userId)
   const [profile, setProfile] = useState<Profile>({
     id: '', username: '', full_name: '', avatar_url: null, profile_icon: null,
-    bio: null, website: null, is_public: true, show_on_leaderboard: true, timezone: 'Asia/Kolkata'
+    bio: null, website: null, is_public: true, timezone: 'Asia/Kolkata'
   })
   const [rewards, setRewards] = useState<UserRewards>({
     current_avatar: 'user', current_theme: 'default',
@@ -119,6 +121,7 @@ export default function SettingsPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { setLoading(false); return }
 
+      setUserId(user.id)
       setEmail(user.email || '')
 
       // Fetch profile
@@ -129,7 +132,7 @@ export default function SettingsPage() {
           username: user.email?.split('@')[0] || 'user',
           full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
           profile_icon: 'user', // Set default icon
-          is_public: true, show_on_leaderboard: true, timezone: 'Asia/Kolkata'
+          is_public: true, timezone: 'Asia/Kolkata'
         }
         const { data: created } = await supabase.from('profiles').insert(newProfile).select().single()
         profileData = created
@@ -195,7 +198,6 @@ export default function SettingsPage() {
         bio: profile.bio,
         website: profile.website,
         is_public: profile.is_public,
-        show_on_leaderboard: profile.show_on_leaderboard,
         timezone: profile.timezone,
         profile_icon: rewards.current_avatar
       }).eq('id', user.id)
@@ -249,79 +251,19 @@ export default function SettingsPage() {
   }
 
   const exportData = async () => {
-    try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+    const success = await exportWithLibrary({ format: 'json' })
+    if (success) {
+      showToast('Data exported successfully!', 'success')
+    } else {
+      showToast('Error exporting data', 'error')
+    }
+  }
 
-      // Fetch ALL user data from ALL tables
-      const [
-        { data: habits },
-        { data: logs },
-        { data: achievements },
-        { data: rewards },
-        { data: coinAwards },
-        { data: xpAwards },
-        { data: projects },
-        { data: tasks },
-        { data: instagramPosts },
-        { data: journal },
-        { data: clients },
-        { data: settings },
-        { data: notifications }
-      ] = await Promise.all([
-        supabase.from('habits').select('*').eq('user_id', user.id),
-        supabase.from('habit_logs').select('*').eq('user_id', user.id),
-        supabase.from('user_achievements').select('*').eq('user_id', user.id),
-        supabase.from('user_rewards').select('*').eq('user_id', user.id),
-        supabase.from('coin_awards').select('*').eq('user_id', user.id),
-        supabase.from('xp_awards').select('*').eq('user_id', user.id),
-        supabase.from('projects').select('*').eq('user_id', user.id),
-        supabase.from('tasks').select('*').eq('user_id', user.id),
-        supabase.from('instagram_posts').select('*').eq('user_id', user.id),
-        supabase.from('daily_journal').select('*').eq('user_id', user.id),
-        supabase.from('freelance_clients').select('*').eq('user_id', user.id),
-        supabase.from('user_settings').select('*').eq('user_id', user.id),
-        supabase.from('notification_settings').select('*').eq('user_id', user.id)
-      ])
-
-      const completeExport = {
-        profile,
-        rewards,
-        habits: {
-          habits,
-          logs,
-          coinAwards,
-          xpAwards
-        },
-        achievements,
-        projects: {
-          projects,
-          tasks
-        },
-        content: {
-          instagramPosts,
-          journal
-        },
-        business: {
-          freelanceClients: clients
-        },
-        settings: {
-          userSettings: settings,
-          notifications
-        },
-        exportedAt: new Date().toISOString(),
-        version: '1.0'
-      }
-
-      const blob = new Blob([JSON.stringify(completeExport, null, 2)], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `devx-daily-complete-export-${new Date().toISOString().split('T')[0]}.json`
-      a.click()
-    } catch (error) {
-      console.error('Export error:', error)
+  const exportDataCSV = async () => {
+    const success = await exportWithLibrary({ format: 'csv' })
+    if (success) {
+      showToast('Data exported as CSV!', 'success')
+    } else {
       showToast('Error exporting data', 'error')
     }
   }
@@ -551,7 +493,7 @@ export default function SettingsPage() {
       {activeTab === 'privacy' && (
         <div className="space-y-6">
           {/* View Public Profile Link */}
-          {profile.is_public && profile.show_on_leaderboard && (
+          {profile.is_public && (
             <div className="bg-accent-primary/10 border border-accent-primary/30 p-4 rounded-xl">
               <div className="flex items-center justify-between">
                 <div>
@@ -576,26 +518,12 @@ export default function SettingsPage() {
                   {profile.is_public ? <Eye className="text-accent-primary" size={20} /> : <EyeOff className="text-foreground-muted" size={20} />}
                   <div>
                     <div className="font-medium">Public Profile</div>
-                    <div className="text-sm text-foreground-muted">Allow others to see your profile</div>
+                    <div className="text-sm text-foreground-muted">Allow others to see your profile and stats on leaderboard</div>
                   </div>
                 </div>
                 <button onClick={() => setProfile({ ...profile, is_public: !profile.is_public })}
                   className={`relative w-12 h-6 rounded-full transition ${profile.is_public ? 'bg-accent-primary' : 'bg-border-subtle'}`}>
                   <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${profile.is_public ? 'translate-x-7' : 'translate-x-1'}`} />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between p-4 bg-background rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Globe className="text-accent-primary" size={20} />
-                  <div>
-                    <div className="font-medium">Show on Leaderboard</div>
-                    <div className="text-sm text-foreground-muted">Display your stats publicly</div>
-                  </div>
-                </div>
-                <button onClick={() => setProfile({ ...profile, show_on_leaderboard: !profile.show_on_leaderboard })}
-                  className={`relative w-12 h-6 rounded-full transition ${profile.show_on_leaderboard ? 'bg-accent-primary' : 'bg-border-subtle'}`}>
-                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${profile.show_on_leaderboard ? 'translate-x-7' : 'translate-x-1'}`} />
                 </button>
               </div>
             </div>
@@ -604,10 +532,16 @@ export default function SettingsPage() {
           {/* Data Export */}
           <div className="bg-surface p-6 rounded-xl border border-border-subtle">
             <h2 className="font-semibold mb-4">Your Data</h2>
-            <button onClick={exportData} className="flex items-center gap-2 px-4 py-2 bg-accent-primary/10 text-accent-primary border border-accent-primary/30 rounded-lg hover:bg-accent-primary/20 transition">
-              <Download size={18} /> Export All Data
-            </button>
-            <p className="text-xs text-foreground-muted mt-2">Download all your habits, logs, and achievements as JSON</p>
+            <p className="text-sm text-foreground-muted mb-4">Export your data for backup or to use elsewhere (GDPR compliant)</p>
+            <div className="flex gap-3 flex-wrap">
+              <button onClick={exportData} className="flex items-center gap-2 px-4 py-2 bg-accent-primary/10 text-accent-primary border border-accent-primary/30 rounded-lg hover:bg-accent-primary/20 transition">
+                <FileJson size={18} /> Export as JSON
+              </button>
+              <button onClick={exportDataCSV} className="flex items-center gap-2 px-4 py-2 bg-green-500/10 text-green-500 border border-green-500/30 rounded-lg hover:bg-green-500/20 transition">
+                <FileSpreadsheet size={18} /> Export as CSV
+              </button>
+            </div>
+            <p className="text-xs text-foreground-muted mt-3">Includes: habits, logs, rewards, badges, journal entries, and settings</p>
           </div>
         </div>
       )}

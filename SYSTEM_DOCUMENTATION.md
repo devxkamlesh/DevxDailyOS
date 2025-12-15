@@ -751,6 +751,358 @@ CREATE INDEX idx_user_badges_user ON user_badges(user_id);
 
 ---
 
+## Feature Pages
+
+### /projects - Project Management
+
+**Purpose:** Track personal/side projects from idea to shipped status with task management.
+
+**Routes:**
+- `/projects` - Main project list with Kanban/Cards/List views
+- `/projects/[id]` - Individual project detail page with unique URL
+
+**Database Tables:**
+- `projects` - Project records with status, tech stack, URLs
+- `tasks` - Tasks linked to projects
+
+**Core Features:**
+| Feature | Description |
+|---------|-------------|
+| Project CRUD | Create, read, update, delete projects |
+| Status Pipeline | Idea → Building → Shipped workflow |
+| Task Management | Add, toggle complete, delete tasks per project |
+| Progress Tracking | Auto-calculated percentage based on completed tasks |
+| Tech Stack Tags | Comma-separated input, stored as array |
+| External Links | Live URL and GitHub repository links |
+| Detail Page | Dedicated page per project with unique URL |
+
+**UI Components:**
+| Component | Description |
+|-----------|-------------|
+| View Toggle | Switch between Card view and List view |
+| Status Colors | Yellow (Idea), Blue (Building), Green (Shipped) |
+| Project Modal | Full project details with task list |
+| Detail Page | Full-page view with tabs (Tasks, Notes) |
+| Quick Actions | Status change buttons, edit/delete |
+| Summary Stats | Ideas count, Building count, Shipped count, Tasks done |
+| Loading States | Skeleton cards during data fetch |
+| Empty State | CTA to create first project |
+
+**Data Model:**
+```typescript
+interface Project {
+  id: string
+  user_id: string
+  name: string
+  description?: string
+  status: 'idea' | 'building' | 'shipped'
+  tech_stack?: string[]
+  live_url?: string
+  github_url?: string
+  created_at: string
+  updated_at: string
+}
+
+interface Task {
+  id: string
+  user_id: string
+  project_id: string
+  title: string
+  status: 'pending' | 'done'
+  priority: 'low' | 'medium' | 'high'
+  created_at: string
+}
+```
+
+---
+
+### /freelance - Freelance CRM
+
+**Purpose:** Full-featured CRM for managing freelance clients through sales pipeline with analytics.
+
+**Routes:**
+- `/freelance` - Main client list with Kanban/Cards/List views
+- `/freelance/[id]` - Individual client detail page with unique URL
+
+**Database Tables:**
+- `freelance_clients` - Client records with stage, value, contact info, priority
+
+**Core Features:**
+| Feature | Description |
+|---------|-------------|
+| Kanban Pipeline | Lead → In Talk → Proposal → Active → Done |
+| Drag & Drop | Move clients between stages using @dnd-kit |
+| 3 View Modes | Kanban, Cards, List views |
+| Client Management | Name, platform, project title, value, currency |
+| Priority System | Low, Medium, High, Urgent with color coding |
+| Contact Info | Email, phone, website fields |
+| Next Action Tracking | Action description with due date + overdue alerts |
+| Star/Favorite | Pin important clients to top |
+| Search & Filter | Filter by stage, platform, search by name |
+| Analytics Dashboard | Pipeline value, Active value, Completed value, Conversion rate |
+| Platform Options | Upwork, Fiverr, LinkedIn, Twitter, DM, Referral, Other |
+| Multi-Currency | INR, USD, EUR, GBP support |
+| Detail Page | Dedicated page per client with unique URL |
+
+**UI Components:**
+| Component | Description |
+|-----------|-------------|
+| Stats Cards | Pipeline value, Active value, Completed, Conversion % |
+| 5-Column Kanban | Responsive board with stage totals and values |
+| Client Cards | Priority badge, platform tag, value, next action |
+| Client Detail Modal | Full info with stage switcher, contact links |
+| Detail Page | Full-page view with edit modal, contact info, notes |
+| Search Bar | Real-time search across clients |
+| Filter Panel | Stage and platform filters |
+| View Toggle | Switch between Kanban/Cards/List |
+| Overdue Indicators | Red border for past-due actions |
+
+**Data Model:**
+```typescript
+interface FreelanceClient {
+  id: string
+  user_id: string
+  name: string
+  platform?: 'upwork' | 'fiverr' | 'linkedin' | 'twitter' | 'dm' | 'referral' | 'other'
+  project_title?: string
+  value?: number
+  currency: string
+  stage: 'lead' | 'in_talk' | 'proposal' | 'active' | 'done'
+  priority?: 'low' | 'medium' | 'high' | 'urgent'
+  email?: string
+  phone?: string
+  website?: string
+  next_action?: string
+  next_action_date?: string
+  notes?: string
+  is_starred: boolean
+  created_at: string
+}
+```
+
+---
+
+### /instagram - Content Planner
+
+**Purpose:** Full content planning system for Instagram with scheduling, categories, and copy features.
+
+**Routes:**
+- `/instagram` - Main post list with Kanban/Cards/List views
+- `/instagram/[id]` - Individual post detail page with unique URL
+
+**Database Tables:**
+- `instagram_posts` - Post records with format, status, category, scheduling
+
+**Core Features:**
+| Feature | Description |
+|---------|-------------|
+| Content Pipeline | Idea → Draft → Scheduled → Posted |
+| Drag & Drop | Move posts between statuses using @dnd-kit |
+| 3 View Modes | Kanban, Cards, List views |
+| Post Formats | Reel, Post, Story, Carousel with distinct icons |
+| Categories | Educational, Entertainment, Promotional, Personal, Trending, Collaboration |
+| Content Fields | Title, Hook, Caption, Hashtags, Thumbnail Idea |
+| Script Section | Dedicated script field for Reels/Videos with timestamps template |
+| Notes Section | Additional notes and ideas per post |
+| Tabbed Detail View | Content, Script, Notes tabs in detail modal |
+| Scheduling | Date and time scheduling |
+| Star/Favorite | Pin important posts to top |
+| Copy to Clipboard | One-click copy caption, hashtags, and script |
+| Search & Filter | Filter by format, category, search by title |
+| Format Stats | Count of Reels, Posts, Stories, Carousels |
+| Detail Page | Dedicated page per post with unique URL |
+
+**UI Components:**
+| Component | Description |
+|-----------|-------------|
+| Stats Cards | Count per format type (Reels, Posts, etc.) |
+| 4-Column Kanban | Responsive board with status counts |
+| Post Cards | Format badge, category tag, schedule date |
+| Post Detail Modal | Full content with copy buttons |
+| Detail Page | Full-page view with tabs (Content, Script, Notes) |
+| Search Bar | Real-time search across posts |
+| Filter Panel | Format and category filters |
+| View Toggle | Switch between Kanban/Cards/List |
+| Gradient Theme | Purple-to-pink Instagram-style accents |
+
+**Data Model:**
+```typescript
+interface InstagramPost {
+  id: string
+  user_id: string
+  title?: string
+  hook?: string
+  caption?: string
+  hashtags?: string
+  format: 'reel' | 'post' | 'story' | 'carousel'
+  status: 'idea' | 'draft' | 'scheduled' | 'posted'
+  category?: string
+  thumbnail_idea?: string
+  scheduled_date?: string
+  scheduled_time?: string
+  script?: string  // Video script with timestamps
+  notes?: string
+  is_starred: boolean
+  created_at: string
+}
+```
+
+**Category Configuration:**
+| Category | Color | Use Case |
+|----------|-------|----------|
+| educational | Blue | Teaching/tutorial content |
+| entertainment | Pink | Fun/engaging content |
+| promotional | Green | Product/service promotion |
+| personal | Orange | Behind-the-scenes, personal |
+| trending | Purple | Trend-based content |
+| collaboration | Cyan | Partner/collab content |
+
+---
+
+### /social-leaderboard - Friend Rankings
+
+**Purpose:** Compare stats and rankings with friends in a dedicated leaderboard view.
+
+**Database Views:**
+- `public_profiles` - Public user data for leaderboard display
+
+**Core Features:**
+| Feature | Description |
+|---------|-------------|
+| Friend Rankings | XP-based leaderboard of accepted friends |
+| Stats Comparison | Level, XP, Streak, Perfect Days |
+| Summary Cards | Your rank, friends count, top performer |
+| Profile Links | Click to view friend profiles |
+
+**UI Components:**
+| Component | Description |
+|-----------|-------------|
+| Leaderboard Table | Ranked list with position indicators |
+| Summary Cards | Quick stats overview |
+| Medal Icons | Gold/Silver/Bronze for top 3 |
+| Loading States | Skeleton rows during fetch |
+| Empty State | CTA to add friends |
+
+---
+
+### /templates - Template Library
+
+**Purpose:** Pre-built templates for quick-starting habits, projects, Instagram content, and freelance clients.
+
+**Core Features:**
+| Feature | Description |
+|---------|-------------|
+| 3 View Modes | Cards, Grid, List views |
+| Template Types | Habits, Projects, Instagram, Freelance |
+| Search & Filter | Search by name, filter by type |
+| Preview Modal | Full template preview before applying |
+| One-Click Apply | Instantly create items from templates |
+| Stats Dashboard | Count of templates per category |
+
+**Template Categories:**
+| Category | Templates | Items |
+|----------|-----------|-------|
+| Habits | Morning Routine, Deep Work, Fitness, Mindfulness, Entrepreneur | 5-6 habits each |
+| Projects | Web App, Mobile App, SaaS, AI/ML | 10 tasks each |
+| Instagram | Content Creator, Business Brand, Influencer Growth | 7-8 posts each |
+| Freelance | Web Dev, Mobile, UI/UX, E-commerce, CMS, API | 1 client each |
+
+**UI Components:**
+| Component | Description |
+|-----------|-------------|
+| Stats Cards | Total, Habits, Projects, Instagram, Freelance counts |
+| Type Filter | Filter by template category |
+| View Toggle | Cards/Grid/List view modes |
+| Search Bar | Real-time search across templates |
+| Template Cards | Icon, name, description, item count, preview/apply buttons |
+| Preview Modal | Full item list with details, apply button |
+| Grid View | Compact view for quick browsing |
+| List View | Detailed row view with quick actions |
+
+**Apply Behavior:**
+| Type | Action |
+|------|--------|
+| Habit | Creates all habits in template |
+| Project | Creates project with all tasks |
+| Instagram | Creates all posts in template |
+| Freelance | Creates client record |
+
+---
+
+### /feedback - User Feedback
+
+**Purpose:** Allow users to submit bug reports, feature requests, and suggestions.
+
+**Routes:**
+- `/feedback` - User feedback submission and history
+
+**Database Tables:**
+- `feedback` - Feedback records with type, status, priority
+
+**Core Features:**
+| Feature | Description |
+|---------|-------------|
+| Submit Feedback | Bug reports, feature requests, improvements |
+| Priority Levels | Low, Medium, High, Urgent |
+| Status Tracking | Pending → Reviewing → Planned → In Progress → Completed |
+| Admin Response | View admin notes on feedback |
+| History View | See all submitted feedback and status |
+
+---
+
+## Admin Pages
+
+### /admin/feedback - Feedback Management
+
+**Purpose:** Review and respond to user feedback.
+
+**Features:**
+- View all feedback with filters (status, type)
+- Update feedback status
+- Add admin notes (visible to user)
+- Delete feedback
+- Stats: Total, Pending, Bugs, Features
+
+### /admin/announcements - Announcement Management
+
+**Purpose:** Create and manage app-wide announcements.
+
+**Features:**
+- Create/edit/delete announcements
+- Set type: Info, Warning, Success, Error, Update
+- Target audience: All, Free, Premium, New Users
+- Schedule start/end dates
+- Set priority for ordering
+- Toggle active/inactive
+- Dismissible option
+
+### /admin/logs - System Logs
+
+**Purpose:** Monitor system events and errors.
+
+**Features:**
+- View all system logs
+- Filter by level (Debug, Info, Warn, Error, Fatal)
+- Filter by category
+- Search logs
+- View log details with JSON data
+- Clear logs by level or all
+
+### /admin/reports - Reports & Analytics
+
+**Purpose:** Generate reports on app performance.
+
+**Features:**
+- Key metrics: Users, Active Users, Habits, Completions
+- Completion rate and average streak
+- Total revenue
+- Top habits chart
+- User growth chart
+- Date range filter (7d, 30d, 90d, 1y)
+- Export to CSV
+
+---
+
 ## Testing Checklist
 
 - [ ] User registration/login
@@ -765,3 +1117,14 @@ CREATE INDEX idx_user_badges_user ON user_badges(user_id);
 - [ ] Admin operations
 - [ ] RLS policy enforcement
 - [ ] Concurrent update handling
+- [ ] Projects CRUD and task management
+- [ ] Freelance client drag-and-drop
+- [ ] Instagram post pipeline
+- [ ] Social leaderboard friend rankings
+- [ ] Templates preview and apply
+- [ ] Feedback submission and tracking
+- [ ] Announcements display and dismissal
+- [ ] Admin feedback management
+- [ ] Admin announcements CRUD
+- [ ] Admin logs viewing
+- [ ] Admin reports generation

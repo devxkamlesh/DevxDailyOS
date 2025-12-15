@@ -21,8 +21,12 @@ import {
   ChevronDown,
   Zap,
   Users,
-  Cloud,
-  Award
+  Flame,
+  MessageSquarePlus,
+  Shield,
+  Megaphone,
+  FileText,
+  BarChart3
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
@@ -44,10 +48,11 @@ const navSections = [
     ]
   },
   {
-    title: 'Gamification',
+    title: 'Achievements',
     items: [
+      { href: '/level', label: 'Level', icon: Zap },
+      { href: '/streak', label: 'Streak', icon: Flame },
       { href: '/achievements', label: 'Achievements', icon: Trophy },
-      { href: '/challenges', label: 'Challenges', icon: Award },
       { href: '/shop', label: 'Shop', icon: ShoppingCart },
       { href: '/leaderboard', label: 'Leaderboard', icon: Medal },
     ]
@@ -56,12 +61,7 @@ const navSections = [
     title: 'Social',
     items: [
       { href: '/friends', label: 'Friends', icon: Users },
-    ]
-  },
-  {
-    title: 'Tracking',
-    items: [
-      { href: '/weather', label: 'Weather', icon: Cloud },
+      { href: '/social-leaderboard', label: 'Social Leaderboard', icon: Trophy },
     ]
   },
   {
@@ -76,6 +76,16 @@ const navSections = [
     title: 'Settings',
     items: [
       { href: '/settings', label: 'Settings', icon: Settings },
+      { href: '/feedback', label: 'Feedback', icon: MessageSquarePlus },
+    ]
+  },
+  {
+    title: 'Admin',
+    items: [
+      { href: '/admin/feedback', label: 'Feedback', icon: MessageSquarePlus },
+      { href: '/admin/announcements', label: 'Announcements', icon: Megaphone },
+      { href: '/admin/reports', label: 'Reports', icon: BarChart3 },
+      { href: '/admin/logs', label: 'System Logs', icon: FileText },
     ]
   }
 ]
@@ -144,7 +154,7 @@ export default function Sidebar() {
           </Link>
         </div>
 
-        <nav className="px-3 space-y-2 overflow-y-auto max-h-[calc(100vh-120px)]">
+        <nav className="px-3 space-y-2 overflow-y-auto max-h-[calc(100vh-120px)] sidebar-scrollbar">
           {navSections.map((section) => {
             const isOpen = openSections.includes(section.title)
             const hasActivePage = section.items.some(item => pathname === item.href)

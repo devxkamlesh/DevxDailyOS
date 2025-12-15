@@ -19,6 +19,9 @@
   --color-accent-primary: var(--accent-primary);
   --color-accent-success: var(--accent-success);
   --color-border-subtle: var(--border-subtle);
+  /* Aliases for shadcn compatibility */
+  --color-muted: var(--surface);
+  --color-muted-foreground: var(--foreground-muted);
 }
 
 html {
@@ -110,6 +113,58 @@ h1, h2, h3, h4, h5, h6 {
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(59, 130, 246, 0.5);
+}
+
+/* Sidebar custom scrollbar */
+.sidebar-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 10px;
+  margin: 8px 0;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  transition: background 0.2s ease;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Admin sidebar scrollbar (red accent) */
+.admin-sidebar-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(239, 68, 68, 0.3) transparent;
+}
+
+.admin-sidebar-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.admin-sidebar-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 10px;
+  margin: 8px 0;
+}
+
+.admin-sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(239, 68, 68, 0.3);
+  border-radius: 10px;
+  transition: background 0.2s ease;
+}
+
+.admin-sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(239, 68, 68, 0.5);
 }
 
 /* Landing Page Animations */

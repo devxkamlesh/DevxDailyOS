@@ -27,7 +27,6 @@ CREATE TABLE profiles (
   -- Settings
   profile_icon text DEFAULT 'user', -- TEXT ID (not emoji!)
   is_public boolean DEFAULT true,
-  show_on_leaderboard boolean DEFAULT true,
   timezone text DEFAULT 'Asia/Kolkata',
   
   -- Timestamps
@@ -353,6 +352,7 @@ CREATE TABLE payment_transactions (
 CREATE TABLE system_settings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   maintenance_mode BOOLEAN DEFAULT false,
+  maintenance_message TEXT DEFAULT NULL,
   registration_enabled BOOLEAN DEFAULT true,
   leaderboard_enabled BOOLEAN DEFAULT true,
   shop_enabled BOOLEAN DEFAULT true,
@@ -881,7 +881,7 @@ CREATE INDEX idx_contact_submissions_created_at ON contact_submissions(created_a
 
 -- Profiles
 CREATE INDEX idx_profiles_username ON profiles(username);
-CREATE INDEX idx_profiles_leaderboard ON profiles(show_on_leaderboard) WHERE show_on_leaderboard = true;
+CREATE INDEX idx_profiles_public ON profiles(is_public) WHERE is_public = true;
 -- ============================================
 -- ROW LEVEL SECURITY (RLS)
 -- ============================================
@@ -919,25 +919,36 @@ $$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
 
 COMMENT ON FUNCTION is_admin IS 'Check if user is admin - uses separate admins table';
 
--- Admins Table Policies (service_role only)
+-- Admins Table Policies
 CREATE POLICY "admins_select" ON admins FOR SELECT USING (true);
 CREATE POLICY "admins_insert_service" ON admins FOR INSERT WITH CHECK (auth.jwt()->>'role' = 'service_role');
 CREATE POLICY "admins_update_service" ON admins FOR UPDATE USING (auth.jwt()->>'role' = 'service_role');
 CREATE POLICY "admins_delete_service" ON admins FOR DELETE USING (auth.jwt()->>'role' = 'service_role');
 
--- Profiles Policies (SECURE - prevents is_admin self-assignment)
+-- Helper function to add first admin (run once during setup)
+-- This bypasses RLS using SECURITY DEFINER
+CREATE OR REPLACE FUNCTION setup_first_admin(admin_user_id uuid)
+RETURNS boolean AS $$
+BEGIN
+  -- Only allow if no admins exist yet
+  IF EXISTS (SELECT 1 FROM admins LIMIT 1) THEN
+    RAISE EXCEPTION 'Admin already exists. Use service_role to add more admins.';
+  END IF;
+  
+  INSERT INTO admins (user_id) VALUES (admin_user_id);
+  RETURN true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION setup_first_admin(uuid) TO authenticated;
+
+-- Profiles Policies (SECURE - admin status managed via separate admins table)
 CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users can insert own profile" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
 CREATE POLICY "profiles_update_safe" ON profiles 
   FOR UPDATE 
   USING (auth.uid() = id)
-  WITH CHECK (
-    auth.uid() = id
-    AND (
-      is_admin IS NOT DISTINCT FROM (SELECT p.is_admin FROM profiles p WHERE p.id = auth.uid())
-      OR is_admin(auth.uid())
-    )
-  );
+  WITH CHECK (auth.uid() = id);
 
 -- Habits Policies
 CREATE POLICY "Users can view own habits" ON habits FOR SELECT USING (auth.uid() = user_id);
@@ -1027,20 +1038,57 @@ CREATE POLICY "Authenticated can insert system settings" ON system_settings FOR 
 
 -- Insert default badges
 INSERT INTO badges (name, description, icon, color, badge_type, price_inr, display_order, criteria) VALUES
+-- Auto badges
 ('New', 'New member - First 7 days', 'sparkles', 'green', 'auto', 0, 1, '{"type": "new_user", "days": 7}'),
 ('Early Adopter', 'Joined during beta', 'rocket', 'purple', 'special', 0, 2, '{}'),
-('Streak Master', '30 day streak', 'flame', 'orange', 'achievement', 0, 10, '{"type": "streak", "days": 30}'),
-('Habit Hero', 'Completed 100 habits', 'trophy', 'yellow', 'achievement', 0, 11, '{"type": "completions", "count": 100}'),
-('Consistent', '7 day streak', 'zap', 'blue', 'achievement', 0, 12, '{"type": "streak", "days": 7}'),
-('Creator', 'Content Creator', 'video', 'red', 'special', 0, 20, '{}'),
-('Developer', 'Software Developer', 'code', 'cyan', 'special', 0, 21, '{}'),
-('YouTuber', 'YouTube Creator', 'youtube', 'red', 'special', 0, 22, '{}'),
-('Entrepreneur', 'Business Owner', 'briefcase', 'amber', 'special', 0, 23, '{}'),
-('Designer', 'UI/UX Designer', 'palette', 'pink', 'special', 0, 24, '{}'),
-('Freelancer', 'Freelance Professional', 'laptop', 'indigo', 'special', 0, 25, '{}'),
-('Student', 'Student', 'book', 'emerald', 'special', 0, 26, '{}'),
-('Pro', 'Sadhana Pro Member', 'crown', 'gold', 'special', 0, 27, '{}'),
-('Verified', 'Verified Account', 'check-circle', 'blue', 'special', 0, 28, '{}')
+
+-- Level Badges (HARD MODE - Starting from Level 30)
+('Grandmaster', 'Reached Level 30', 'crown', 'orange', 'achievement', 0, 100, '{"type": "level", "level": 30}'),
+('Legend', 'Reached Level 40', 'flame', 'red', 'achievement', 0, 101, '{"type": "level", "level": 40}'),
+('Mythic', 'Reached Level 50', 'crown', 'pink', 'achievement', 0, 102, '{"type": "level", "level": 50}'),
+('Divine', 'Reached Level 60', 'star', 'cyan', 'achievement', 0, 103, '{"type": "level", "level": 60}'),
+('Immortal', 'Reached Level 75', 'star', 'amber', 'achievement', 0, 104, '{"type": "level", "level": 75}'),
+('Transcendent', 'Reached Level 100', 'crown', 'gradient', 'achievement', 0, 105, '{"type": "level", "level": 100}'),
+('Celestial', 'Reached Level 150', 'zap', 'blue', 'achievement', 0, 106, '{"type": "level", "level": 150}'),
+('Eternal', 'Reached Level 200', 'crown', 'gold', 'achievement', 0, 107, '{"type": "level", "level": 200}'),
+
+-- Streak Badges (HARD MODE - Starting from 30 days)
+('Month Master', '30 day streak', 'calendar', 'purple', 'achievement', 0, 200, '{"type": "streak", "days": 30}'),
+('Discipline King', '60 day streak', 'crown', 'indigo', 'achievement', 0, 201, '{"type": "streak", "days": 60}'),
+('Quarter Champion', '90 day streak', 'trophy', 'cyan', 'achievement', 0, 202, '{"type": "streak", "days": 90}'),
+('Half Year Hero', '180 day streak', 'star', 'pink', 'achievement', 0, 203, '{"type": "streak", "days": 180}'),
+('Year Legend', '365 day streak', 'crown', 'amber', 'achievement', 0, 204, '{"type": "streak", "days": 365}'),
+('Unstoppable', '500 day streak', 'flame', 'red', 'achievement', 0, 205, '{"type": "streak", "days": 500}'),
+('Two Year Titan', '730 day streak', 'crown', 'yellow', 'achievement', 0, 206, '{"type": "streak", "days": 730}'),
+('Streak Immortal', '1000 day streak', 'star', 'gradient', 'achievement', 0, 207, '{"type": "streak", "days": 1000}'),
+
+-- Completion Badges (LEGENDARY)
+('First Step', 'Completed 1 habit', 'check-circle', 'green', 'achievement', 0, 300, '{"type": "completions", "count": 1}'),
+('Habit Hero', 'Completed 100 habits', 'trophy', 'yellow', 'achievement', 0, 301, '{"type": "completions", "count": 100}'),
+('Titan', 'Completed 1000 habits', 'crown', 'orange', 'achievement', 0, 302, '{"type": "completions", "count": 1000}'),
+('Mythic Achiever', 'Completed 2500 habits', 'star', 'pink', 'achievement', 0, 303, '{"type": "completions", "count": 2500}'),
+('Transcendent', 'Completed 5000 habits', 'zap', 'red', 'achievement', 0, 304, '{"type": "completions", "count": 5000}'),
+('Eternal', 'Completed 10000 habits', 'crown', 'gradient', 'achievement', 0, 305, '{"type": "completions", "count": 10000}'),
+
+-- Perfect Day Badges (EXTREME)
+('Perfect Start', '3 perfect days', 'star', 'cyan', 'achievement', 0, 400, '{"type": "perfect_days", "count": 3}'),
+('Perfectionist', '10 perfect days', 'star', 'blue', 'achievement', 0, 401, '{"type": "perfect_days", "count": 10}'),
+('Flawless', '25 perfect days', 'star', 'indigo', 'achievement', 0, 402, '{"type": "perfect_days", "count": 25}'),
+('Perfect Century', '100 perfect days', 'trophy', 'orange', 'achievement', 0, 403, '{"type": "perfect_days", "count": 100}'),
+('Perfect Elite', '200 perfect days', 'crown', 'pink', 'achievement', 0, 404, '{"type": "perfect_days", "count": 200}'),
+('Perfect Legend', '365 perfect days', 'zap', 'red', 'achievement', 0, 405, '{"type": "perfect_days", "count": 365}'),
+('Perfect Immortal', '500 perfect days', 'crown', 'gradient', 'achievement', 0, 406, '{"type": "perfect_days", "count": 500}'),
+
+-- Special badges
+('Creator', 'Content Creator', 'video', 'red', 'special', 0, 500, '{}'),
+('Developer', 'Software Developer', 'code', 'cyan', 'special', 0, 501, '{}'),
+('YouTuber', 'YouTube Creator', 'youtube', 'red', 'special', 0, 502, '{}'),
+('Entrepreneur', 'Business Owner', 'briefcase', 'amber', 'special', 0, 503, '{}'),
+('Designer', 'UI/UX Designer', 'palette', 'pink', 'special', 0, 504, '{}'),
+('Freelancer', 'Freelance Professional', 'laptop', 'indigo', 'special', 0, 505, '{}'),
+('Student', 'Student', 'book', 'emerald', 'special', 0, 506, '{}'),
+('Pro', 'Sadhana Pro Member', 'crown', 'gold', 'special', 0, 507, '{}'),
+('Verified', 'Verified Account', 'check-circle', 'blue', 'special', 0, 508, '{}')
 ON CONFLICT DO NOTHING;
 
 -- Insert default coin packages
@@ -1209,16 +1257,34 @@ CREATE TABLE projects (
   slug text,
   description text,
   status text DEFAULT 'idea' CHECK (status IN ('idea', 'building', 'shipped')),
+  priority text DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+  category text,
   tech_stack text[],
   live_url text,
   github_url text,
+  
+  -- Planning & Time
+  due_date date,
+  estimated_hours int,
+  actual_hours int DEFAULT 0,
+  
+  -- Organization
+  is_pinned boolean DEFAULT false,
+  is_archived boolean DEFAULT false,
+  notes text,
   
   -- Timestamps
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
 
-COMMENT ON TABLE projects IS 'User projects and side projects';
+-- Indexes for projects
+CREATE INDEX idx_projects_user ON projects(user_id);
+CREATE INDEX idx_projects_status ON projects(status);
+CREATE INDEX idx_projects_pinned ON projects(is_pinned) WHERE is_pinned = true;
+CREATE INDEX idx_projects_archived ON projects(is_archived);
+
+COMMENT ON TABLE projects IS 'User projects and side projects with full management features';
 
 -- ============================================
 -- TASKS TABLE
@@ -1254,17 +1320,35 @@ CREATE TABLE instagram_posts (
   hook text,
   caption text,
   hashtags text,
-  format text CHECK (format IN ('reel', 'post', 'story')),
+  format text DEFAULT 'reel' CHECK (format IN ('reel', 'post', 'story', 'carousel')),
   status text DEFAULT 'idea' CHECK (status IN ('idea', 'draft', 'scheduled', 'posted')),
+  category text,
+  thumbnail_idea text,
+  
+  -- Scheduling
+  scheduled_date date,
+  scheduled_time text,
   scheduled_for timestamptz,
   posted_at timestamptz,
+  
+  -- Script & Notes
+  script text,
+  notes text,
+  
+  -- Organization
+  is_starred boolean DEFAULT false,
   
   -- Timestamps
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
 
-COMMENT ON TABLE instagram_posts IS 'Instagram content planning and scheduling';
+-- Indexes for instagram_posts
+CREATE INDEX idx_instagram_posts_user ON instagram_posts(user_id);
+CREATE INDEX idx_instagram_posts_status ON instagram_posts(status);
+CREATE INDEX idx_instagram_posts_starred ON instagram_posts(is_starred) WHERE is_starred = true;
+
+COMMENT ON TABLE instagram_posts IS 'Instagram content planning and scheduling with categories';
 
 -- ============================================
 -- FREELANCE CLIENTS TABLE
@@ -1275,21 +1359,37 @@ CREATE TABLE freelance_clients (
   
   -- Client Details
   name text NOT NULL,
-  platform text CHECK (platform IN ('upwork', 'fiverr', 'dm', 'other')),
+  platform text CHECK (platform IN ('upwork', 'fiverr', 'linkedin', 'twitter', 'dm', 'referral', 'other')),
   project_title text,
   value numeric,
   currency text DEFAULT 'INR',
   stage text DEFAULT 'lead' CHECK (stage IN ('lead', 'in_talk', 'proposal', 'active', 'done')),
+  priority text DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+  
+  -- Contact Info
+  email text,
+  phone text,
+  website text,
+  
+  -- Actions & Notes
   next_action text,
   next_action_date date,
   notes text,
+  
+  -- Organization
+  is_starred boolean DEFAULT false,
   
   -- Timestamps
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
 
-COMMENT ON TABLE freelance_clients IS 'Freelance client and project management';
+-- Indexes for freelance_clients
+CREATE INDEX idx_freelance_clients_user ON freelance_clients(user_id);
+CREATE INDEX idx_freelance_clients_stage ON freelance_clients(stage);
+CREATE INDEX idx_freelance_clients_starred ON freelance_clients(is_starred) WHERE is_starred = true;
+
+COMMENT ON TABLE freelance_clients IS 'Freelance CRM with client pipeline management';
 
 -- ============================================
 -- USER SETTINGS TABLE
@@ -1489,17 +1589,6 @@ COMMENT ON TABLE chart_configurations IS 'Chart configuration and settings stora
 -- SOCIAL FEATURES TABLES
 -- ============================================
 
--- Weather tracking
-CREATE TABLE daily_weather (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  date DATE NOT NULL UNIQUE,
-  condition TEXT, -- sunny, rainy, cloudy, etc.
-  temperature INTEGER,
-  humidity INTEGER,
-  api_data JSONB,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
 -- Friend connections
 CREATE TABLE user_friends (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1508,30 +1597,6 @@ CREATE TABLE user_friends (
   status TEXT DEFAULT 'pending', -- pending, accepted, blocked
   created_at TIMESTAMPTZ DEFAULT now(),
   UNIQUE(user_id, friend_id)
-);
-
--- Social challenges
-CREATE TABLE social_challenges (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  creator_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  description TEXT,
-  habit_type TEXT,
-  duration_days INTEGER DEFAULT 7,
-  start_date DATE,
-  end_date DATE,
-  is_public BOOLEAN DEFAULT false,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Challenge participants
-CREATE TABLE challenge_participants (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  challenge_id UUID REFERENCES social_challenges(id) ON DELETE CASCADE,
-  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  joined_at TIMESTAMPTZ DEFAULT now(),
-  completed_days INTEGER DEFAULT 0,
-  UNIQUE(challenge_id, user_id)
 );
 
 -- Detailed time tracking table
@@ -1547,10 +1612,7 @@ CREATE TABLE habit_time_logs (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
-COMMENT ON TABLE daily_weather IS 'Daily weather data for correlation analysis';
 COMMENT ON TABLE user_friends IS 'User friend connections for social features';
-COMMENT ON TABLE social_challenges IS 'Community challenges and competitions';
-COMMENT ON TABLE challenge_participants IS 'User participation in social challenges';
 COMMENT ON TABLE habit_time_logs IS 'Detailed time tracking for habit sessions';
 
 -- ============================================
@@ -1759,12 +1821,7 @@ CREATE INDEX idx_chart_configs_global ON chart_configurations(is_global) WHERE i
 CREATE INDEX idx_user_friends_user_id ON user_friends(user_id);
 CREATE INDEX idx_user_friends_friend_id ON user_friends(friend_id);
 CREATE INDEX idx_user_friends_status ON user_friends(status);
-CREATE INDEX idx_social_challenges_creator ON social_challenges(creator_id);
-CREATE INDEX idx_social_challenges_public ON social_challenges(is_public) WHERE is_public = true;
-CREATE INDEX idx_challenge_participants_challenge ON challenge_participants(challenge_id);
-CREATE INDEX idx_challenge_participants_user ON challenge_participants(user_id);
 CREATE INDEX idx_habit_time_logs_habit_log ON habit_time_logs(habit_log_id);
-CREATE INDEX idx_daily_weather_date ON daily_weather(date);
 -- ============================================
 -- ADDITIONAL RLS POLICIES
 -- ============================================
@@ -1786,10 +1843,7 @@ ALTER TABLE time_blocks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chart_metrics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chart_configurations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_friends ENABLE ROW LEVEL SECURITY;
-ALTER TABLE social_challenges ENABLE ROW LEVEL SECURITY;
-ALTER TABLE challenge_participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE habit_time_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE daily_weather ENABLE ROW LEVEL SECURITY;
 
 -- User Achievements Policies
 CREATE POLICY "Users can view own achievements" ON user_achievements FOR SELECT USING (auth.uid() = user_id);
@@ -1881,15 +1935,9 @@ CREATE POLICY "Users can delete their own chart configs" ON chart_configurations
 
 -- User Friends Policies
 CREATE POLICY "Users can read their own friends" ON user_friends FOR SELECT USING (user_id = auth.uid() OR friend_id = auth.uid());
-CREATE POLICY "Users can manage their own friend requests" ON user_friends FOR ALL USING (user_id = auth.uid());
-
--- Social Challenges Policies
-CREATE POLICY "Users can read public challenges" ON social_challenges FOR SELECT USING (is_public = true OR creator_id = auth.uid());
-CREATE POLICY "Users can create challenges" ON social_challenges FOR INSERT WITH CHECK (creator_id = auth.uid());
-
--- Challenge Participants Policies
-CREATE POLICY "Users can view challenge participants" ON challenge_participants FOR SELECT USING (true);
-CREATE POLICY "Users can join challenges" ON challenge_participants FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "Users can insert friend requests" ON user_friends FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "Users can update friend requests they sent or received" ON user_friends FOR UPDATE USING (user_id = auth.uid() OR friend_id = auth.uid());
+CREATE POLICY "Users can delete friend requests they sent or received" ON user_friends FOR DELETE USING (user_id = auth.uid() OR friend_id = auth.uid());
 
 -- Habit Time Logs Policies
 CREATE POLICY "Users can view own time logs" ON habit_time_logs FOR SELECT USING (
@@ -1899,8 +1947,6 @@ CREATE POLICY "Users can create own time logs" ON habit_time_logs FOR INSERT WIT
   EXISTS(SELECT 1 FROM habit_logs hl WHERE hl.id = habit_log_id AND hl.user_id = auth.uid())
 );
 
--- Daily Weather Policies (public read)
-CREATE POLICY "Anyone can read weather data" ON daily_weather FOR SELECT USING (true);
 -- ============================================
 -- PUBLIC PROFILES VIEW (For Leaderboard)
 -- ============================================
@@ -1915,7 +1961,6 @@ SELECT
   p.profile_icon,
   p.avatar_url,
   p.is_public,
-  p.show_on_leaderboard,
   p.created_at,
   
   -- User rewards data
@@ -1936,6 +1981,38 @@ SELECT
     AND (ub.expires_at IS NULL OR ub.expires_at > NOW())
     LIMIT 1
   ) as primary_badge,
+  
+  -- Today's stats
+  (
+    SELECT COUNT(*)
+    FROM habit_logs hl
+    WHERE hl.user_id = p.id 
+    AND hl.completed = true
+    AND hl.date = CURRENT_DATE
+  ) as today_completions,
+  
+  -- Total habits count
+  (
+    SELECT COUNT(*)
+    FROM habits h
+    WHERE h.user_id = p.id 
+    AND h.is_active = true
+  ) as total_habits,
+  
+  -- Today's focus time (in minutes)
+  (
+    SELECT COALESCE(SUM(hfs.duration), 0)
+    FROM habit_focus_sessions hfs
+    WHERE hfs.user_id = p.id 
+    AND hfs.date = CURRENT_DATE
+  ) as today_focus_minutes,
+  
+  -- Total focus time (in minutes)
+  (
+    SELECT COALESCE(SUM(hfs.duration), 0)
+    FROM habit_focus_sessions hfs
+    WHERE hfs.user_id = p.id
+  ) as total_focus_minutes,
   
   -- Weekly stats (last 7 days)
   (
@@ -1995,7 +2072,7 @@ SELECT
 
 FROM profiles p
 LEFT JOIN user_rewards ur ON ur.user_id = p.id
-WHERE p.show_on_leaderboard = true;
+WHERE p.is_public = true;
 
 COMMENT ON VIEW public_profiles IS 'Public user profiles with aggregated stats for leaderboard';
 
@@ -2009,7 +2086,7 @@ GRANT SELECT ON public_profiles TO authenticated;
 -- Insert premium golden avatars
 INSERT INTO shop_plans (name, description, plan_type, coin_price, icon, is_active) VALUES
 ('Golden Crown', 'Premium royal crown', 'avatar', 1200, 'gold-crown', true),
-('Golden Star', 'Premium shining star', 'avatar', 300, 'gold-star', true),
+('Golden Star', 'Premium shining star', 'avatar', 8000, 'gold-star', true),
 ('Golden Trophy', 'Premium champion', 'avatar', 600, 'gold-trophy', true),
 ('Golden Diamond', 'Ultimate premium', 'avatar', 1000, 'gold-gem', true),
 ('Golden Flame', 'Premium hot streak', 'avatar', 500, 'gold-flame', true),
@@ -2087,13 +2164,10 @@ CREATE INDEX IF NOT EXISTS idx_user_badges_primary
   ON user_badges(user_id, is_primary) 
   WHERE is_primary = true;
 
--- Badges - Purchasable badges
-CREATE INDEX IF NOT EXISTS idx_badges_purchasable 
-  ON badges(is_purchasable, coin_price) 
-  WHERE is_purchasable = true;
-
-CREATE INDEX IF NOT EXISTS idx_badges_rarity 
-  ON badges(rarity);
+-- Badges - Active badges by type
+CREATE INDEX IF NOT EXISTS idx_badges_active_type 
+  ON badges(badge_type, is_active) 
+  WHERE is_active = true;
 
 -- Weekly Challenges - Active challenges
 CREATE INDEX IF NOT EXISTS idx_weekly_challenges_dates 
@@ -2346,9 +2420,7 @@ SELECT
   p.username,
   p.timezone,
   COALESCE(us.theme, 'dark') as theme,
-  COALESCE(us.notifications_enabled, true) as notifications_enabled,
-  COALESCE(us.sound_enabled, true) as sound_enabled,
-  COALESCE(us.daily_reminder_time, '09:00') as daily_reminder_time
+  COALESCE(us.start_of_week, 'monday') as start_of_week
 FROM profiles p
 LEFT JOIN user_settings us ON p.id = us.user_id;
 
@@ -2477,3 +2549,369 @@ COMMENT ON SCHEMA public IS 'Sadhana Database Schema v2.1 - COMPLETE - December 
 -- ============================================================================
 -- END OF COMPLETE DATABASE SCHEMA
 -- ============================================================================
+
+
+-- ============================================================================
+-- NEW FEATURES - December 15, 2025
+-- Feedback, Announcements, and System Logs
+-- ============================================================================
+
+-- ============================================
+-- FEEDBACK TABLE - User feedback and feature requests
+-- ============================================
+CREATE TABLE IF NOT EXISTS feedback (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES profiles(id) ON DELETE SET NULL,
+  
+  -- Feedback details
+  type text NOT NULL CHECK (type IN ('bug', 'feature', 'improvement', 'other')),
+  title text NOT NULL,
+  description text NOT NULL,
+  priority text DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+  
+  -- Status tracking
+  status text DEFAULT 'pending' CHECK (status IN ('pending', 'reviewing', 'planned', 'in_progress', 'completed', 'rejected')),
+  admin_notes text,
+  
+  -- Metadata
+  page_url text,
+  user_agent text,
+  
+  -- Timestamps
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_feedback_user ON feedback(user_id);
+CREATE INDEX IF NOT EXISTS idx_feedback_status ON feedback(status);
+CREATE INDEX IF NOT EXISTS idx_feedback_type ON feedback(type);
+CREATE INDEX IF NOT EXISTS idx_feedback_created ON feedback(created_at DESC);
+
+ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can create feedback" ON feedback
+  FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can view own feedback" ON feedback
+  FOR SELECT TO authenticated
+  USING (auth.uid() = user_id OR EXISTS (SELECT 1 FROM admins WHERE user_id = auth.uid()));
+
+CREATE POLICY "Admins can update feedback" ON feedback
+  FOR UPDATE TO authenticated
+  USING (EXISTS (SELECT 1 FROM admins WHERE user_id = auth.uid()));
+
+COMMENT ON TABLE feedback IS 'User feedback, bug reports, and feature requests';
+
+-- ============================================
+-- ANNOUNCEMENTS TABLE - App-wide announcements
+-- ============================================
+CREATE TABLE IF NOT EXISTS announcements (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  
+  -- Announcement content
+  title text NOT NULL,
+  content text NOT NULL,
+  type text DEFAULT 'info' CHECK (type IN ('info', 'warning', 'success', 'error', 'update')),
+  
+  -- Display settings
+  is_active boolean DEFAULT true,
+  is_dismissible boolean DEFAULT true,
+  show_on_dashboard boolean DEFAULT true,
+  priority int DEFAULT 0,
+  
+  -- Targeting
+  target_audience text DEFAULT 'all' CHECK (target_audience IN ('all', 'free', 'premium', 'new_users')),
+  
+  -- Scheduling
+  start_date timestamptz DEFAULT now(),
+  end_date timestamptz,
+  
+  -- Metadata
+  created_by uuid REFERENCES profiles(id),
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_announcements_active ON announcements(is_active, start_date, end_date);
+CREATE INDEX IF NOT EXISTS idx_announcements_priority ON announcements(priority DESC);
+
+ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can view active announcements" ON announcements
+  FOR SELECT TO authenticated
+  USING (is_active = true AND start_date <= now() AND (end_date IS NULL OR end_date >= now()));
+
+CREATE POLICY "Admins can manage announcements" ON announcements
+  FOR ALL TO authenticated
+  USING (EXISTS (SELECT 1 FROM admins WHERE user_id = auth.uid()));
+
+COMMENT ON TABLE announcements IS 'App-wide announcements and notifications';
+
+-- ============================================
+-- ANNOUNCEMENT DISMISSALS - Track dismissed announcements per user
+-- ============================================
+CREATE TABLE IF NOT EXISTS announcement_dismissals (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  announcement_id uuid NOT NULL REFERENCES announcements(id) ON DELETE CASCADE,
+  dismissed_at timestamptz DEFAULT now(),
+  
+  UNIQUE(user_id, announcement_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_announcement_dismissals_user ON announcement_dismissals(user_id);
+
+ALTER TABLE announcement_dismissals ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can dismiss announcements" ON announcement_dismissals
+  FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can view own dismissals" ON announcement_dismissals
+  FOR SELECT TO authenticated
+  USING (auth.uid() = user_id);
+
+-- ============================================
+-- SYSTEM LOGS TABLE - Error and activity logs
+-- ============================================
+CREATE TABLE IF NOT EXISTS system_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  
+  -- Log details
+  level text NOT NULL CHECK (level IN ('debug', 'info', 'warn', 'error', 'fatal')),
+  category text NOT NULL,
+  message text NOT NULL,
+  details jsonb,
+  
+  -- Context
+  user_id uuid REFERENCES profiles(id) ON DELETE SET NULL,
+  page_url text,
+  user_agent text,
+  ip_address text,
+  
+  -- Timestamps
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_system_logs_level ON system_logs(level);
+CREATE INDEX IF NOT EXISTS idx_system_logs_category ON system_logs(category);
+CREATE INDEX IF NOT EXISTS idx_system_logs_created ON system_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_system_logs_user ON system_logs(user_id);
+
+ALTER TABLE system_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Only admins can view logs" ON system_logs
+  FOR SELECT TO authenticated
+  USING (EXISTS (SELECT 1 FROM admins WHERE user_id = auth.uid()));
+
+CREATE POLICY "System can insert logs" ON system_logs
+  FOR INSERT TO authenticated
+  WITH CHECK (true);
+
+COMMENT ON TABLE system_logs IS 'System error and activity logs';
+
+-- ============================================
+-- HELPER FUNCTION: Log system event
+-- ============================================
+CREATE OR REPLACE FUNCTION log_system_event(
+  p_level text,
+  p_category text,
+  p_message text,
+  p_details jsonb DEFAULT NULL,
+  p_user_id uuid DEFAULT NULL
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_log_id uuid;
+BEGIN
+  INSERT INTO system_logs (level, category, message, details, user_id)
+  VALUES (p_level, p_category, p_message, p_details, COALESCE(p_user_id, auth.uid()))
+  RETURNING id INTO v_log_id;
+  
+  RETURN v_log_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION log_system_event(text, text, text, jsonb, uuid) TO authenticated;
+
+-- ============================================
+-- VIEW: Active announcements for users
+-- ============================================
+CREATE OR REPLACE VIEW active_announcements AS
+SELECT 
+  a.*,
+  NOT EXISTS (
+    SELECT 1 FROM announcement_dismissals ad 
+    WHERE ad.announcement_id = a.id AND ad.user_id = auth.uid()
+  ) as is_visible
+FROM announcements a
+WHERE a.is_active = true 
+  AND a.start_date <= now() 
+  AND (a.end_date IS NULL OR a.end_date >= now())
+ORDER BY a.priority DESC, a.created_at DESC;
+
+-- ============================================
+-- ANALYZE NEW TABLES
+-- ============================================
+ANALYZE feedback;
+ANALYZE announcements;
+ANALYZE announcement_dismissals;
+ANALYZE system_logs;
+
+COMMENT ON SCHEMA public IS 'Sadhana Database Schema v2.2 - December 15, 2025 - Added feedback, announcements, and system logs';
+
+-- ============================================
+-- ADMIN BADGE MANAGEMENT FUNCTIONS
+-- ============================================
+
+-- Admin function to get users who have a specific badge
+CREATE OR REPLACE FUNCTION admin_get_badge_users(p_badge_id uuid)
+RETURNS TABLE (
+  user_badge_id uuid,
+  user_id uuid,
+  username varchar,
+  full_name varchar,
+  is_primary boolean
+) AS $$
+BEGIN
+  IF NOT is_admin(auth.uid()) THEN
+    RAISE EXCEPTION 'Unauthorized: Admin access required';
+  END IF;
+  
+  RETURN QUERY
+  SELECT 
+    ub.id as user_badge_id,
+    ub.user_id,
+    p.username,
+    p.full_name,
+    ub.is_primary
+  FROM user_badges ub
+  JOIN profiles p ON p.id = ub.user_id
+  WHERE ub.badge_id = p_badge_id
+  ORDER BY ub.created_at DESC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Admin function to create a badge
+CREATE OR REPLACE FUNCTION admin_create_badge(
+  p_name varchar,
+  p_description text DEFAULT '',
+  p_icon varchar DEFAULT 'award',
+  p_color varchar DEFAULT 'blue',
+  p_badge_type varchar DEFAULT 'special',
+  p_display_order int DEFAULT 0,
+  p_is_active boolean DEFAULT true
+)
+RETURNS uuid AS $$
+DECLARE
+  new_badge_id uuid;
+BEGIN
+  IF NOT is_admin(auth.uid()) THEN
+    RAISE EXCEPTION 'Unauthorized: Admin access required';
+  END IF;
+  
+  INSERT INTO badges (name, description, icon, color, badge_type, display_order, is_active)
+  VALUES (p_name, p_description, p_icon, p_color, p_badge_type, p_display_order, p_is_active)
+  RETURNING id INTO new_badge_id;
+  
+  RETURN new_badge_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Admin function to update a badge
+CREATE OR REPLACE FUNCTION admin_update_badge(
+  p_badge_id uuid,
+  p_name varchar,
+  p_description text DEFAULT '',
+  p_icon varchar DEFAULT 'award',
+  p_color varchar DEFAULT 'blue',
+  p_badge_type varchar DEFAULT 'special',
+  p_display_order int DEFAULT 0,
+  p_is_active boolean DEFAULT true
+)
+RETURNS boolean AS $$
+BEGIN
+  IF NOT is_admin(auth.uid()) THEN
+    RAISE EXCEPTION 'Unauthorized: Admin access required';
+  END IF;
+  
+  UPDATE badges SET
+    name = p_name,
+    description = p_description,
+    icon = p_icon,
+    color = p_color,
+    badge_type = p_badge_type,
+    display_order = p_display_order,
+    is_active = p_is_active,
+    updated_at = now()
+  WHERE id = p_badge_id;
+  
+  RETURN FOUND;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Admin function to delete a badge
+CREATE OR REPLACE FUNCTION admin_delete_badge(p_badge_id uuid)
+RETURNS boolean AS $$
+BEGIN
+  IF NOT is_admin(auth.uid()) THEN
+    RAISE EXCEPTION 'Unauthorized: Admin access required';
+  END IF;
+  
+  DELETE FROM badges WHERE id = p_badge_id;
+  RETURN FOUND;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Admin function to remove badge from any user
+CREATE OR REPLACE FUNCTION admin_remove_user_badge(p_user_badge_id uuid)
+RETURNS boolean AS $$
+DECLARE
+  v_user_id uuid;
+  was_primary boolean;
+  badge_count integer;
+BEGIN
+  IF NOT is_admin(auth.uid()) THEN
+    RAISE EXCEPTION 'Unauthorized: Admin access required';
+  END IF;
+  
+  SELECT user_id, is_primary INTO v_user_id, was_primary 
+  FROM user_badges WHERE id = p_user_badge_id;
+  
+  IF NOT FOUND THEN
+    RETURN false;
+  END IF;
+  
+  DELETE FROM user_badges WHERE id = p_user_badge_id;
+  
+  IF was_primary THEN
+    SELECT COUNT(*) INTO badge_count FROM user_badges WHERE user_id = v_user_id;
+    
+    IF badge_count > 0 THEN
+      UPDATE user_badges SET is_primary = true 
+      WHERE user_id = v_user_id AND id = (
+        SELECT id FROM user_badges WHERE user_id = v_user_id ORDER BY created_at ASC LIMIT 1
+      );
+    END IF;
+  END IF;
+  
+  RETURN true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant execute permissions for admin badge functions
+GRANT EXECUTE ON FUNCTION admin_get_badge_users(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_create_badge(varchar, text, varchar, varchar, varchar, int, boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_update_badge(uuid, varchar, text, varchar, varchar, varchar, int, boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_delete_badge(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_remove_user_badge(uuid) TO authenticated;
+
+
+
+
+-- Check your user ID first
+SELECT id, email FROM auth.users WHERE email = 'kamleshgchoudhary007@gmail.com';

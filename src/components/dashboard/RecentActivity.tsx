@@ -33,16 +33,16 @@ export default function RecentActivity() {
 
         const activities: Activity[] = []
 
-        // Fetch recent habit logs
+        // Fetch recent habit logs - use explicit FK reference to avoid ambiguity
         const { data: habitLogs, error: habitLogsError } = await supabase
           .from('habit_logs')
-          .select('*, habits(name)')
+          .select('*, habits!habit_logs_habit_id_fkey(name)')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(3)
 
         if (habitLogsError) {
-          console.error('Error fetching habit logs:', habitLogsError)
+          console.error('Error fetching habit logs:', habitLogsError.message, habitLogsError.code, habitLogsError.details)
         }
 
         habitLogs?.forEach(log => {

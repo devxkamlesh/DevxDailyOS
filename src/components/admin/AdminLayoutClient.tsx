@@ -8,7 +8,8 @@ import {
   LayoutDashboard, Users, BarChart3, Trophy, ShoppingBag, 
   Settings, ChevronLeft, ChevronRight, Shield, Bell,
   Target, Ticket, Coins, Zap, Menu, X, IndianRupee, Activity,
-  CreditCard, Mail, Award, ChevronDown, PieChart
+  CreditCard, Mail, Award, ChevronDown, MessageSquare, Megaphone,
+  FileText, ScrollText
 } from 'lucide-react'
 
 const adminNavSections = [
@@ -17,6 +18,7 @@ const adminNavSections = [
     items: [
       { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
       { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
+      { href: '/admin/reports', label: 'Reports', icon: FileText },
     ]
   },
   {
@@ -25,13 +27,13 @@ const adminNavSections = [
       { href: '/admin/users', label: 'Users', icon: Users },
       { href: '/admin/user-tracking', label: 'User Tracking', icon: Activity },
       { href: '/admin/contacts', label: 'Contact Messages', icon: Mail },
+      { href: '/admin/feedback', label: 'Feedback', icon: MessageSquare },
     ]
   },
   {
     title: 'Content',
     items: [
       { href: '/admin/habits', label: 'Habits Data', icon: Target },
-      { href: '/admin/challenges', label: 'Challenges', icon: Trophy },
       { href: '/admin/weekly-challenges', label: 'Weekly Challenges', icon: Award },
       { href: '/admin/badges', label: 'Badges', icon: Award },
     ]
@@ -54,8 +56,9 @@ const adminNavSections = [
   {
     title: 'System',
     items: [
-      { href: '/admin/charts', label: 'Chart Management', icon: PieChart },
       { href: '/admin/notifications', label: 'Notifications', icon: Bell },
+      { href: '/admin/announcements', label: 'Announcements', icon: Megaphone },
+      { href: '/admin/logs', label: 'System Logs', icon: ScrollText },
       { href: '/admin/settings', label: 'Settings', icon: Settings },
     ]
   }
@@ -126,7 +129,7 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
         </div>
 
         {/* Navigation */}
-        <nav className="px-3 py-2 space-y-1 overflow-y-auto max-h-[calc(100vh-140px)]">
+        <nav className="px-3 py-2 space-y-1 overflow-y-auto max-h-[calc(100vh-140px)] admin-sidebar-scrollbar">
           {adminNavSections.map((section) => {
             const isOpen = openSections.includes(section.title)
             const hasActivePage = section.items.some(item => 

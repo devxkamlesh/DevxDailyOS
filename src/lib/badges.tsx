@@ -1,5 +1,7 @@
 'use client'
 
+import { useState, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Sparkles, Rocket, Flame, Trophy, Zap, Video, Code, Youtube,
   Briefcase, Palette, Laptop, BookOpen, Crown, CheckCircle2, Award,
@@ -68,16 +70,59 @@ export interface UserBadge {
   badge: Badge
 }
 
+// Badge Tooltip Component (renders via portal to avoid overflow clipping)
+function BadgeTooltip({ 
+  badge, 
+  position, 
+  colors 
+}: { 
+  badge: { name: string; description?: string }
+  position: { x: number; y: number }
+  colors: { text: string }
+}) {
+  if (typeof window === 'undefined') return null
+  
+  return createPortal(
+    <div 
+      className="fixed z-[9999] px-3 py-2 bg-surface border border-border-subtle rounded-xl shadow-xl pointer-events-none animate-fadeIn"
+      style={{ 
+        left: position.x,
+        top: position.y - 8,
+        transform: 'translate(-50%, -100%)'
+      }}
+    >
+      <div className={`font-medium text-sm ${colors.text}`}>{badge.name}</div>
+      {badge.description && (
+        <div className="text-xs text-foreground-muted mt-0.5 max-w-[200px]">{badge.description}</div>
+      )}
+      {/* Arrow */}
+      <div 
+        className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0"
+        style={{
+          borderLeft: '6px solid transparent',
+          borderRight: '6px solid transparent',
+          borderTop: '6px solid var(--border-subtle)'
+        }}
+      />
+    </div>,
+    document.body
+  )
+}
+
 // Badge component
 export function BadgeDisplay({ 
   badge, 
   size = 'md',
-  showName = true 
+  showName = true,
 }: { 
-  badge: Badge | { name: string; icon: string; color: string } | null
+  badge: Badge | { name: string; icon: string; color: string; description?: string } | null
   size?: 'sm' | 'md' | 'lg'
   showName?: boolean
 }) {
+  const [showTooltip, setShowTooltip] = useState(false)
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 })
+  const badgeRef = useRef<HTMLSpanElement>(null)
+
   if (!badge) return null
 
   const Icon = badgeIcons[badge.icon] || Award
@@ -91,11 +136,36 @@ export function BadgeDisplay({
   
   const iconSizes = { sm: 12, md: 14, lg: 18 }
 
+  const handleMouseEnter = () => {
+    if (showName || !badgeRef.current) return
+    const rect = badgeRef.current.getBoundingClientRect()
+    setTooltipPos({
+      x: rect.left + rect.width / 2,
+      y: rect.top
+    })
+    setShowTooltip(true)
+  }
+
+  const handleMouseLeave = () => {
+    setShowTooltip(false)
+  }
+
   return (
-    <span className={`inline-flex items-center rounded-full border ${colors.bg} ${colors.border} ${sizeClasses[size]}`}>
-      <Icon size={iconSizes[size]} className={colors.text} />
-      {showName && <span className={colors.text}>{badge.name}</span>}
-    </span>
+    <>
+      <span 
+        ref={badgeRef}
+        className={`inline-flex items-center rounded-full border ${colors.bg} ${colors.border} ${sizeClasses[size]} cursor-default transition-transform hover:scale-105`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <Icon size={iconSizes[size]} className={colors.text} />
+        {showName && <span className={colors.text}>{badge.name}</span>}
+      </span>
+      
+      {showTooltip && !showName && (
+        <BadgeTooltip badge={badge} position={tooltipPos} colors={colors} />
+      )}
+    </>
   )
 }
 

@@ -419,11 +419,13 @@ import { useState, useEffect, useCallback } from 'react';
  * Hook for online/offline status
  */
 export function useOnlineStatus() {
-  const [isOnline, setIsOnline] = useState(
-    typeof navigator !== 'undefined' ? navigator.onLine : true
-  );
+  // Default to true to avoid false offline indicators during SSR/hydration
+  const [isOnline, setIsOnline] = useState(true);
 
   useEffect(() => {
+    // Set initial state after mount (client-side only)
+    setIsOnline(navigator.onLine);
+    
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
 

@@ -213,13 +213,21 @@ export function logApiResponse(
   duration: number,
   context?: LogContext
 ): void {
-  const level = status >= 500 ? 'error' : status >= 400 ? 'warn' : 'info';
-  logger[level](`API ${method} ${path} -> ${status} (${duration}ms)`, {
+  const message = `API ${method} ${path} -> ${status} (${duration}ms)`;
+  const logContext = {
     action: 'api_response',
     status,
     duration,
     ...context,
-  });
+  };
+  
+  if (status >= 500) {
+    logger.error(message, undefined, logContext);
+  } else if (status >= 400) {
+    logger.warn(message, logContext);
+  } else {
+    logger.info(message, logContext);
+  }
 }
 
 /**
