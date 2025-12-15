@@ -246,7 +246,59 @@ export default function CalendarPage() {
     }
     const redirectUri = `${window.location.origin}/calendar`
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=${encodeURIComponent(GOOGLE_SCOPES)}&prompt=consent`
-    window.location.href = authUrl
+    
+    // Use popup window to prevent logout issue
+    const width = 500
+    const height = 600
+    const left = window.screenX + (window.outerWidth - width) / 2
+    const top = window.screenY + (window.outerHeight - height) / 2
+    
+    const popup = window.open(
+      authUrl,
+      'google-auth',
+      `width=${width},height=${height},left=${left},top=${top},popup=yes`
+    )
+    
+    // Listen for the popup to redirect back with token
+    const checkPopup = setInterval(() => {
+      try {
+        if (!popup || popup.closed) {
+          clearInterval(checkPopup)
+          return
+        }
+        
+        // Check if popup redirected back to our domain
+        if (popup.location.origin === window.location.origin) {
+          const hash = popup.location.hash
+          if (hash) {
+            const params = new URLSearchParams(hash.substring(1))
+            const token = params.get('access_token')
+            const expiresIn = params.get('expires_in')
+            
+            if (token) {
+              const expiry = Date.now() + (parseInt(expiresIn || '3600') * 1000)
+              localStorage.setItem('google_calendar_token', token)
+              localStorage.setItem('google_calendar_expiry', expiry.toString())
+              setAccessToken(token)
+              
+              // Get user email
+              fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+                headers: { Authorization: `Bearer ${token}` }
+              }).then(res => res.json()).then(data => {
+                if (data.email) {
+                  localStorage.setItem('google_calendar_email', data.email)
+                  setUserEmail(data.email)
+                }
+              })
+            }
+          }
+          popup.close()
+          clearInterval(checkPopup)
+        }
+      } catch (e) {
+        // Cross-origin error - popup is still on Google's domain, keep waiting
+      }
+    }, 500)
   }
 
   const handleLogout = () => {

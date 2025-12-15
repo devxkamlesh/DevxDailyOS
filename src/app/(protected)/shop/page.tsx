@@ -4,33 +4,21 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { 
   Coins, ShoppingCart, Check, Lock, X, 
-  User, Palette, Gift, Star, Tag, Ticket, Sparkles,
+  User, Gift, Star, Tag, Ticket,
   Zap, AlertCircle, IndianRupee, Crown, Rocket, Flame, 
   Trophy, Heart, Shield, Target, Coffee, Music, Gamepad2,
-  Code, Brain, Gem, Moon, Trees, Sunset, Waves,
-  Volume2, BarChart2, Headphones, Bell, Wand2, Clock, MessageCircle,
-  ShoppingBag
+  Code, Brain, Gem, ShoppingBag
 } from 'lucide-react'
-import { useTheme, ThemeId } from '@/components/ThemeProvider'
 import { useSystemSettings } from '@/lib/useSystemSettings'
 
-// Icon mapping for shop items
+// Icon mapping for avatars only
 const iconMap: Record<string, any> = {
-  // Avatars
   user: User, crown: Crown, star: Star, rocket: Rocket, flame: Flame,
   gem: Gem, trophy: Trophy, zap: Zap, heart: Heart, shield: Shield,
   target: Target, coffee: Coffee, music: Music, 'gamepad-2': Gamepad2,
   code: Code, brain: Brain,
-  // Golden Premium Avatars (same icons, different key)
   'gold-crown': Crown, 'gold-star': Star, 'gold-trophy': Trophy,
   'gold-gem': Gem, 'gold-flame': Flame, 'gold-shield': Shield,
-  // Themes
-  palette: Palette, sparkles: Sparkles,
-  default: Palette, ocean: Waves, sunset: Sunset, forest: Trees,
-  purple: Sparkles, gold: Coins, rose: Heart, midnight: Moon,
-  // Features
-  'volume-2': Volume2, 'bar-chart-2': BarChart2, headphones: Headphones,
-  bell: Bell, wand: Wand2, clock: Clock, 'message-circle': MessageCircle
 }
 
 // Check if icon is golden premium
@@ -46,7 +34,7 @@ interface ShopItem {
   id: string
   name: string
   description: string | null
-  plan_type: 'theme' | 'avatar' | 'feature'
+  plan_type: 'avatar'
   coin_price: number
   icon: string | null
   is_active: boolean
@@ -66,9 +54,7 @@ interface CoinPackage {
 
 interface UserRewards {
   coins: number
-  current_theme: string
   current_avatar: string
-  unlocked_themes: string[]
   unlocked_avatars: string[]
 }
 
@@ -88,11 +74,10 @@ export default function ShopPage() {
   const [items, setItems] = useState<ShopItem[]>([])
   const [coinPackages, setCoinPackages] = useState<CoinPackage[]>([])
   const [rewards, setRewards] = useState<UserRewards>({
-    coins: 0, current_theme: 'default', current_avatar: 'user',
-    unlocked_themes: ['default'], unlocked_avatars: ['user']
+    coins: 0, current_avatar: 'user', unlocked_avatars: ['user']
   })
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'buycoins' | 'avatar' | 'theme' | 'feature'>('buycoins')
+  const [activeTab, setActiveTab] = useState<'buycoins' | 'avatar'>('buycoins')
   const [couponCode, setCouponCode] = useState('')
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null)
   const [couponError, setCouponError] = useState('')
@@ -100,7 +85,6 @@ export default function ShopPage() {
   const [popup, setPopup] = useState<{ show: boolean; type: 'success' | 'error'; title: string; message: string }>({ 
     show: false, type: 'success', title: '', message: '' 
   })
-  const { setTheme } = useTheme()
   const { settings: systemSettings, loading: settingsLoading } = useSystemSettings()
   const supabase = createClient()
 
@@ -138,11 +122,12 @@ export default function ShopPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      // Fetch shop items from database (admin-added)
+      // Fetch avatar items only
       const { data: shopItems } = await supabase
         .from('shop_plans')
         .select('*')
         .eq('is_active', true)
+        .eq('plan_type', 'avatar')
         .order('coin_price')
 
       // Fetch coin packages from database
@@ -155,7 +140,7 @@ export default function ShopPage() {
       // Fetch user rewards
       const { data: userRewards } = await supabase
         .from('user_rewards')
-        .select('coins, current_theme, current_avatar, unlocked_themes, unlocked_avatars')
+        .select('coins, current_avatar, unlocked_avatars')
         .eq('user_id', user.id)
         .single()
 
@@ -164,9 +149,7 @@ export default function ShopPage() {
       if (userRewards) {
         setRewards({
           coins: userRewards.coins || 0,
-          current_theme: userRewards.current_theme || 'default',
           current_avatar: userRewards.current_avatar || 'user',
-          unlocked_themes: userRewards.unlocked_themes || ['default'],
           unlocked_avatars: userRewards.unlocked_avatars || ['user']
         })
       }
@@ -323,28 +306,17 @@ export default function ShopPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const itemKey = item.icon || item.id // Use icon as identifier
-    const finalPrice = item.coin_price // No coupon for coin purchases
+    const itemKey = item.icon || item.id
+    const finalPrice = item.coin_price
 
     // Check if already owned
-    const isOwned = item.plan_type === 'theme' 
-      ? rewards.unlocked_themes.includes(itemKey)
-      : item.plan_type === 'avatar'
-      ? rewards.unlocked_avatars.includes(itemKey)
-      : false
+    const isOwned = rewards.unlocked_avatars.includes(itemKey)
 
     if (isOwned) {
       // Just equip it
-      if (item.plan_type === 'theme') {
-        await supabase.from('user_rewards').update({ current_theme: itemKey }).eq('user_id', user.id)
-        setRewards(prev => ({ ...prev, current_theme: itemKey }))
-        setTheme(itemKey as ThemeId)
-        showPopup('success', 'Theme Equipped!', `${item.name} is now active`)
-      } else if (item.plan_type === 'avatar') {
-        await supabase.from('user_rewards').update({ current_avatar: itemKey }).eq('user_id', user.id)
-        setRewards(prev => ({ ...prev, current_avatar: itemKey }))
-        showPopup('success', 'Avatar Equipped!', `${item.name} is now active`)
-      }
+      await supabase.from('user_rewards').update({ current_avatar: itemKey }).eq('user_id', user.id)
+      setRewards(prev => ({ ...prev, current_avatar: itemKey }))
+      showPopup('success', 'Avatar Equipped!', `${item.name} is now active`)
       return
     }
 
@@ -354,34 +326,21 @@ export default function ShopPage() {
       return
     }
 
-    // Purchase
-    const updates: any = { coins: rewards.coins - finalPrice }
-    
-    if (item.plan_type === 'theme') {
-      updates.unlocked_themes = [...new Set([...rewards.unlocked_themes, itemKey])]
-      updates.current_theme = itemKey
-    } else if (item.plan_type === 'avatar') {
-      updates.unlocked_avatars = [...new Set([...rewards.unlocked_avatars, itemKey])]
-      updates.current_avatar = itemKey
+    // Purchase avatar
+    const updates = { 
+      coins: rewards.coins - finalPrice,
+      unlocked_avatars: [...new Set([...rewards.unlocked_avatars, itemKey])],
+      current_avatar: itemKey
     }
 
     await supabase.from('user_rewards').update(updates).eq('user_id', user.id)
-
-    // Update local state
     setRewards(prev => ({ ...prev, ...updates }))
-    
-    if (item.plan_type === 'theme') {
-      setTheme(itemKey as ThemeId)
-    }
-
     showPopup('success', 'Purchase Successful!', `${item.name} unlocked and equipped!`)
   }
 
   const showPopup = (type: 'success' | 'error', title: string, message: string) => {
     setPopup({ show: true, type, title, message })
   }
-
-  const filteredItems = items.filter(item => item.plan_type === activeTab)
 
   if (loading) {
     return (
@@ -424,18 +383,16 @@ export default function ShopPage() {
       <div className="flex gap-2 bg-surface p-1.5 rounded-xl border border-border-subtle overflow-x-auto">
         {[
           { id: 'buycoins', label: 'Buy Coins', icon: IndianRupee },
-          { id: 'avatar', label: 'Avatars', icon: User },
-          { id: 'theme', label: 'Themes', icon: Palette },
-          { id: 'feature', label: 'Features', icon: Sparkles }
+          { id: 'avatar', label: 'Avatars', icon: User }
         ].map(tab => {
           const Icon = tab.icon
           const count = tab.id === 'buycoins' 
             ? coinPackages.length 
-            : items.filter(i => i.plan_type === tab.id).length
+            : items.length
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as 'buycoins' | 'avatar')}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'bg-accent-primary text-white'
@@ -647,29 +604,19 @@ export default function ShopPage() {
         </div>
       )}
 
-      {/* Items Grid */}
-      {activeTab !== 'buycoins' && (filteredItems.length === 0 ? (
+      {/* Avatars Grid */}
+      {activeTab === 'avatar' && (items.length === 0 ? (
         <div className="text-center py-16 bg-surface rounded-2xl border border-border-subtle">
           <Gift size={48} className="mx-auto mb-4 text-foreground-muted opacity-50" />
-          <p className="text-foreground-muted mb-2">No items available yet</p>
-          <p className="text-sm text-foreground-muted">Check back later for new items!</p>
+          <p className="text-foreground-muted mb-2">No avatars available yet</p>
+          <p className="text-sm text-foreground-muted">Check back later for new avatars!</p>
         </div>
       ) : (
         <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-          {filteredItems.map((item) => {
+          {items.map((item) => {
             const itemKey = item.icon || item.id
-            const isOwned = item.plan_type === 'theme'
-              ? rewards.unlocked_themes.includes(itemKey)
-              : item.plan_type === 'avatar'
-              ? rewards.unlocked_avatars.includes(itemKey)
-              : false
-            
-            const isEquipped = item.plan_type === 'theme'
-              ? rewards.current_theme === itemKey
-              : item.plan_type === 'avatar'
-              ? rewards.current_avatar === itemKey
-              : false
-
+            const isOwned = rewards.unlocked_avatars.includes(itemKey)
+            const isEquipped = rewards.current_avatar === itemKey
             const canAfford = rewards.coins >= item.coin_price
             const IconComponent = item.icon ? (iconMap[item.icon] || User) : User
             const isGolden = isGoldenIcon(item.icon)
@@ -698,17 +645,9 @@ export default function ShopPage() {
                 <div className={`w-full aspect-square rounded-lg mb-2 flex items-center justify-center ${
                   isGolden
                     ? 'bg-gradient-to-br from-yellow-500/30 to-orange-500/30'
-                    : item.plan_type === 'theme' 
-                    ? 'bg-gradient-to-br from-purple-500/20 to-pink-500/20'
-                    : item.plan_type === 'avatar'
-                    ? 'bg-gradient-to-br from-blue-500/20 to-cyan-500/20'
-                    : 'bg-gradient-to-br from-yellow-500/20 to-orange-500/20'
+                    : 'bg-gradient-to-br from-blue-500/20 to-cyan-500/20'
                 }`}>
-                  <IconComponent size={28} className={
-                    isGolden ? 'text-yellow-400' :
-                    item.plan_type === 'theme' ? 'text-purple-400' :
-                    item.plan_type === 'avatar' ? 'text-blue-400' : 'text-yellow-400'
-                  } />
+                  <IconComponent size={28} className={isGolden ? 'text-yellow-400' : 'text-blue-400'} />
                 </div>
 
                 {/* Info */}

@@ -9,15 +9,15 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
   // Content Security Policy
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://accounts.google.com https://apis.google.com",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com",
-    "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://www.googleapis.com https://accounts.google.com https://timeapi.io https://worldtimeapi.org",
+    "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://accounts.google.com",
     "object-src 'none'",
     "base-uri 'self'",
-    "form-action 'self'",
+    "form-action 'self' https://accounts.google.com",
     "frame-ancestors 'none'",
   ].join('; ');
 
