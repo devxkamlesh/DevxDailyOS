@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { 
-  Coins, ShoppingCart, Check, Lock, X, 
+  Coins, ShoppingCart, Check, X, 
   User, Gift, Star, Tag, Ticket,
   Zap, AlertCircle, IndianRupee, Crown, Rocket, Flame, 
   Trophy, Heart, Shield, Target, Coffee, Music, Gamepad2,
@@ -24,6 +24,23 @@ const iconMap: Record<string, any> = {
 // Check if icon is golden premium
 const isGoldenIcon = (icon: string | null) => icon?.startsWith('gold-')
 
+// Default avatars if database is empty
+const DEFAULT_AVATARS: ShopItem[] = [
+  // Basic Avatars (200-400 coins)
+  { id: 'basic-1', name: 'Explorer', description: 'Start your journey', icon: 'user', coin_price: 200, plan_type: 'avatar', is_active: true, category: 'basic' },
+  { id: 'basic-2', name: 'Coder', description: 'For the developers', icon: 'code', coin_price: 250, plan_type: 'avatar', is_active: true, category: 'basic' },
+  { id: 'basic-3', name: 'Thinker', description: 'Deep thoughts', icon: 'brain', coin_price: 300, plan_type: 'avatar', is_active: true, category: 'basic' },
+  { id: 'basic-4', name: 'Achiever', description: 'Goal oriented', icon: 'target', coin_price: 350, plan_type: 'avatar', is_active: true, category: 'basic' },
+  { id: 'basic-5', name: 'Guardian', description: 'Protector of habits', icon: 'shield', coin_price: 400, plan_type: 'avatar', is_active: true, category: 'basic' },
+  
+  // Premium Avatars (600-1000 coins)
+  { id: 'premium-1', name: 'Golden Crown', description: 'Royal excellence', icon: 'gold-crown', coin_price: 600, plan_type: 'avatar', is_active: true, category: 'premium' },
+  { id: 'premium-2', name: 'Golden Star', description: 'Shine bright', icon: 'gold-star', coin_price: 700, plan_type: 'avatar', is_active: true, category: 'premium' },
+  { id: 'premium-3', name: 'Golden Trophy', description: 'Champion status', icon: 'gold-trophy', coin_price: 800, plan_type: 'avatar', is_active: true, category: 'premium' },
+  { id: 'premium-4', name: 'Golden Gem', description: 'Precious & rare', icon: 'gold-gem', coin_price: 900, plan_type: 'avatar', is_active: true, category: 'premium' },
+  { id: 'premium-5', name: 'Golden Flame', description: 'Eternal fire', icon: 'gold-flame', coin_price: 1000, plan_type: 'avatar', is_active: true, category: 'premium' },
+]
+
 declare global {
   interface Window {
     Razorpay: any
@@ -36,8 +53,10 @@ interface ShopItem {
   description: string | null
   plan_type: 'avatar'
   coin_price: number
+  plan_price?: number
   icon: string | null
   is_active: boolean
+  category?: 'basic' | 'premium' | 'animated'
 }
 
 interface CoinPackage {
@@ -144,7 +163,8 @@ export default function ShopPage() {
         .eq('user_id', user.id)
         .single()
 
-      setItems(shopItems || [])
+      // Use default avatars if database is empty
+      setItems(shopItems && shopItems.length > 0 ? shopItems : DEFAULT_AVATARS)
       setCoinPackages(packages || [])
       if (userRewards) {
         setRewards({
@@ -345,11 +365,48 @@ export default function ShopPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="h-20 bg-surface rounded-2xl animate-pulse" />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Header Skeleton */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-surface rounded-xl animate-pulse" />
+            <div>
+              <div className="h-7 w-24 bg-surface rounded animate-pulse mb-1" />
+              <div className="h-4 w-40 bg-surface/50 rounded animate-pulse" />
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-32 bg-surface rounded-xl animate-pulse" />
+          </div>
+        </div>
+        
+        {/* Tabs Skeleton */}
+        <div className="flex gap-2">
+          <div className="h-10 w-28 bg-surface rounded-lg animate-pulse" />
+          <div className="h-10 w-28 bg-surface/50 rounded-lg animate-pulse" />
+        </div>
+        
+        {/* Coin Packages Grid Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map(i => (
-            <div key={i} className="h-40 bg-surface rounded-2xl animate-pulse" />
+            <div key={i} className="bg-surface/50 p-6 rounded-2xl border border-border-subtle">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 bg-background rounded-2xl animate-pulse mb-4" />
+                <div className="h-6 w-24 bg-background rounded animate-pulse mb-2" />
+                <div className="h-4 w-20 bg-background/50 rounded animate-pulse mb-4" />
+                <div className="h-8 w-16 bg-background rounded animate-pulse mb-4" />
+                <div className="h-10 w-full bg-background rounded-xl animate-pulse" />
+              </div>
+            </div>
           ))}
+        </div>
+        
+        {/* Coupon Section Skeleton */}
+        <div className="bg-surface/50 p-6 rounded-2xl border border-border-subtle">
+          <div className="h-5 w-32 bg-background rounded animate-pulse mb-4" />
+          <div className="flex gap-3">
+            <div className="h-10 flex-1 bg-background rounded-lg animate-pulse" />
+            <div className="h-10 w-24 bg-background rounded-lg animate-pulse" />
+          </div>
         </div>
       </div>
     )
@@ -612,92 +669,77 @@ export default function ShopPage() {
           <p className="text-sm text-foreground-muted">Check back later for new avatars!</p>
         </div>
       ) : (
-        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-          {items.map((item) => {
-            const itemKey = item.icon || item.id
-            const isOwned = rewards.unlocked_avatars.includes(itemKey)
-            const isEquipped = rewards.current_avatar === itemKey
-            const canAfford = rewards.coins >= item.coin_price
-            const IconComponent = item.icon ? (iconMap[item.icon] || User) : User
-            const isGolden = isGoldenIcon(item.icon)
-
-            return (
-              <div
-                key={item.id}
-                className={`relative bg-surface rounded-xl border-2 p-3 transition-all hover:scale-[1.02] ${
-                  isGolden
-                    ? 'border-yellow-500/50 bg-gradient-to-br from-yellow-500/5 to-orange-500/5'
-                    : isEquipped
-                    ? 'border-accent-primary bg-accent-primary/5'
-                    : isOwned
-                    ? 'border-accent-success/50'
-                    : 'border-border-subtle hover:border-accent-primary/50'
-                }`}
-              >
-                {/* Premium Badge */}
-                {isGolden && (
-                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-black text-[10px] font-bold rounded-full">
-                    PREMIUM
+        <div className="space-y-8">
+          {/* Basic Avatars */}
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <User size={20} className="text-blue-400" />
+              <h3 className="font-semibold">Basic Avatars</h3>
+              <span className="text-xs text-foreground-muted bg-background px-2 py-0.5 rounded-full">200-400 coins</span>
+            </div>
+            <div className="grid grid-cols-3 md:grid-cols-5 gap-4">
+              {items.filter(i => !isGoldenIcon(i.icon)).map((item) => {
+                const itemKey = item.icon || item.id
+                const isOwned = rewards.unlocked_avatars.includes(itemKey)
+                const isEquipped = rewards.current_avatar === itemKey
+                const canAfford = rewards.coins >= item.coin_price
+                const IconComponent = item.icon ? (iconMap[item.icon] || User) : User
+                return (
+                  <div key={item.id} className={`relative bg-surface rounded-xl border-2 p-4 transition-all hover:scale-[1.02] ${isEquipped ? 'border-accent-primary bg-accent-primary/5' : isOwned ? 'border-accent-success/50' : 'border-border-subtle hover:border-accent-primary/50'}`}>
+                    <div className="w-full aspect-square rounded-xl mb-3 flex items-center justify-center bg-gradient-to-br from-blue-500/20 to-cyan-500/20">
+                      <IconComponent size={32} className="text-blue-400" />
+                    </div>
+                    <h3 className="font-semibold text-sm mb-0.5 truncate">{item.name}</h3>
+                    <p className="text-xs text-foreground-muted mb-2 line-clamp-1">{item.description}</p>
+                    {isEquipped ? (
+                      <div className="flex items-center justify-center gap-1 py-1.5 bg-accent-primary/20 text-accent-primary rounded-lg text-xs font-medium"><Check size={12} /> Equipped</div>
+                    ) : isOwned ? (
+                      <button onClick={() => purchaseItem(item)} className="w-full py-1.5 bg-accent-success/20 text-accent-success rounded-lg text-xs font-medium hover:bg-accent-success/30 transition">Equip</button>
+                    ) : (
+                      <button onClick={() => purchaseItem(item)} disabled={!canAfford} className={`w-full py-1.5 rounded-lg text-xs font-medium transition flex items-center justify-center gap-1 ${canAfford ? 'bg-accent-primary text-white hover:opacity-90' : 'bg-background text-foreground-muted cursor-not-allowed'}`}><Coins size={12} />{item.coin_price}</button>
+                    )}
                   </div>
-                )}
+                )
+              })}
+            </div>
+          </div>
 
-                {/* Icon */}
-                <div className={`w-full aspect-square rounded-lg mb-2 flex items-center justify-center ${
-                  isGolden
-                    ? 'bg-gradient-to-br from-yellow-500/30 to-orange-500/30'
-                    : 'bg-gradient-to-br from-blue-500/20 to-cyan-500/20'
-                }`}>
-                  <IconComponent size={28} className={isGolden ? 'text-yellow-400' : 'text-blue-400'} />
-                </div>
-
-                {/* Info */}
-                <h3 className="font-semibold text-sm mb-0.5 truncate">{item.name}</h3>
-                {item.description && (
-                  <p className="text-xs text-foreground-muted mb-2 line-clamp-1">{item.description}</p>
-                )}
-
-                {/* Price & Action */}
-                {isEquipped ? (
-                  <div className="flex items-center justify-center gap-1 py-1.5 bg-accent-primary/20 text-accent-primary rounded-lg text-xs font-medium">
-                    <Check size={12} /> Equipped
+          {/* Premium Avatars */}
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <Crown size={20} className="text-yellow-400" />
+              <h3 className="font-semibold">Premium Avatars</h3>
+              <span className="text-xs text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded-full">600-1000 coins</span>
+            </div>
+            <div className="grid grid-cols-3 md:grid-cols-5 gap-4">
+              {items.filter(i => isGoldenIcon(i.icon)).map((item) => {
+                const itemKey = item.icon || item.id
+                const isOwned = rewards.unlocked_avatars.includes(itemKey)
+                const isEquipped = rewards.current_avatar === itemKey
+                const canAfford = rewards.coins >= item.coin_price
+                const IconComponent = item.icon ? (iconMap[item.icon] || User) : User
+                return (
+                  <div key={item.id} className={`relative bg-surface rounded-xl border-2 p-4 transition-all hover:scale-[1.02] border-yellow-500/50 bg-gradient-to-br from-yellow-500/5 to-orange-500/5 ${isEquipped ? 'ring-2 ring-accent-primary' : ''}`}>
+                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-black text-[10px] font-bold rounded-full">PREMIUM</div>
+                    <div className="w-full aspect-square rounded-xl mb-3 flex items-center justify-center bg-gradient-to-br from-yellow-500/30 to-orange-500/30">
+                      <IconComponent size={32} className="text-yellow-400" />
+                    </div>
+                    <h3 className="font-semibold text-sm mb-0.5 truncate">{item.name}</h3>
+                    <p className="text-xs text-foreground-muted mb-2 line-clamp-1">{item.description}</p>
+                    {isEquipped ? (
+                      <div className="flex items-center justify-center gap-1 py-1.5 bg-accent-primary/20 text-accent-primary rounded-lg text-xs font-medium"><Check size={12} /> Equipped</div>
+                    ) : isOwned ? (
+                      <button onClick={() => purchaseItem(item)} className="w-full py-1.5 bg-accent-success/20 text-accent-success rounded-lg text-xs font-medium hover:bg-accent-success/30 transition">Equip</button>
+                    ) : (
+                      <button onClick={() => purchaseItem(item)} disabled={!canAfford} className={`w-full py-1.5 rounded-lg text-xs font-medium transition flex items-center justify-center gap-1 ${canAfford ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-black hover:opacity-90' : 'bg-background text-foreground-muted cursor-not-allowed'}`}><Coins size={12} />{item.coin_price}</button>
+                    )}
                   </div>
-                ) : isOwned ? (
-                  <button
-                    onClick={() => purchaseItem(item)}
-                    className="w-full py-1.5 bg-accent-success/20 text-accent-success rounded-lg text-xs font-medium hover:bg-accent-success/30 transition"
-                  >
-                    Equip
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => purchaseItem(item)}
-                    disabled={!canAfford}
-                    className={`w-full py-1.5 rounded-lg text-xs font-medium transition flex items-center justify-center gap-1 ${
-                      canAfford
-                        ? 'bg-accent-primary text-white hover:opacity-90'
-                        : 'bg-background text-foreground-muted cursor-not-allowed'
-                    }`}
-                  >
-                    <Coins size={12} />
-                    <span>{item.coin_price}</span>
-                  </button>
-                )}
+                )
+              })}
+            </div>
+          </div>
 
-                {/* Badges */}
-                {isOwned && !isEquipped && (
-                  <div className="absolute top-2 right-2 p-1 bg-accent-success rounded-full">
-                    <Check size={10} className="text-white" />
-                  </div>
-                )}
-                
-                {!isOwned && !canAfford && (
-                  <div className="absolute top-2 right-2">
-                    <Lock size={12} className="text-foreground-muted" />
-                  </div>
-                )}
-              </div>
-            )
-          })}
+
         </div>
       ))}
 

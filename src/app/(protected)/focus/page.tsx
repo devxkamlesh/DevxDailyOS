@@ -658,7 +658,17 @@ export default function FocusPage() {
             
             <div className="p-4 space-y-2 overflow-y-auto max-h-[60vh]">
               {loading ? (
-                <div className="text-center py-8 text-foreground-muted">Loading...</div>
+                <div className="space-y-2">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="flex items-center gap-3 p-3 bg-background/50 rounded-xl">
+                      <div className="w-10 h-10 bg-background rounded-lg animate-pulse" />
+                      <div className="flex-1">
+                        <div className="h-4 w-32 bg-background rounded animate-pulse mb-1" />
+                        <div className="h-3 w-20 bg-background rounded animate-pulse" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : focusHabits.length === 0 ? (
                 <div className="text-center py-8">
                   <Target size={40} className="mx-auto mb-3 text-foreground-muted opacity-50" />

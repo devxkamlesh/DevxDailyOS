@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Calendar, Target, Zap, Trophy, BookOpen, Camera, BarChart3 } from 'lucide-react'
+import { Calendar, Target, Zap, Trophy, BookOpen, Camera } from 'lucide-react'
 
 import { useState, useEffect } from 'react'
 
@@ -47,13 +47,6 @@ export default function QuickActions() {
       href: '/achievements',
       color: 'text-yellow-400',
       bg: 'bg-yellow-500/10 hover:bg-yellow-500/20'
-    },
-    {
-      icon: BarChart3,
-      label: 'Analytics',
-      href: '/analytics',
-      color: 'text-indigo-400',
-      bg: 'bg-indigo-500/10 hover:bg-indigo-500/20'
     }
   ]
 

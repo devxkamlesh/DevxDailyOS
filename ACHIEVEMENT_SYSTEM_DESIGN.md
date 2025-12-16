@@ -238,3 +238,37 @@ Admins can tune via the badges admin panel:
 - `/src/app/(protected)/challenges/page.tsx` - User challenges view
 - `/src/lib/xp.ts` - XP calculation logic
 - `/supabase/migrations/database.sql` - Database schema
+__|____________________|____
+  |                    |
+  |                    |
+  |                    |
+  |                    |
+  |                    |
+  |                    |
+  |                    |
+__|____________________|____
+  |                    |
+  |                    |
+  |                    |
+  |                    |
+  |                    |
+  |                    |
+  |                    |
+__|____________________|____
+  |                    |
+  |                    |
+  |                    |
+  |                    |
+  |                    |
+  |                    |
+  |                    |
+__|____________________|____
+  |                    |
+  |                    |
+  |                    |
+  |                    |
+  |                    |
+  |                    |
+  |                    |
+__|____________________|____
+

@@ -264,12 +264,57 @@ export default function LeaderboardPage() {
 
 
       {loading ? (
-        <div className="space-y-3">
-          {[1, 2, 3, 4, 5].map(i => (
-            <div key={i} className="bg-surface p-4 rounded-xl border border-border-subtle animate-pulse">
-              <div className="h-14 bg-background rounded-lg" />
+        <div className="space-y-6">
+          {/* Top 3 Podium Skeleton */}
+          <div className="grid grid-cols-3 gap-4">
+            {/* 2nd Place */}
+            <div className="bg-surface/50 p-6 rounded-xl border border-border-subtle">
+              <div className="flex flex-col items-center">
+                <div className="h-10 w-10 bg-background rounded-full animate-pulse mb-3" />
+                <div className="w-16 h-16 bg-background rounded-full animate-pulse mb-3" />
+                <div className="h-4 w-20 bg-background rounded animate-pulse mb-1" />
+                <div className="h-3 w-16 bg-background/50 rounded animate-pulse" />
+              </div>
             </div>
-          ))}
+            {/* 1st Place */}
+            <div className="bg-surface/50 p-6 rounded-xl border border-border-subtle -mt-4">
+              <div className="flex flex-col items-center">
+                <div className="h-12 w-12 bg-background rounded-full animate-pulse mb-3" />
+                <div className="w-20 h-20 bg-background rounded-full animate-pulse mb-3" />
+                <div className="h-5 w-24 bg-background rounded animate-pulse mb-1" />
+                <div className="h-3 w-20 bg-background/50 rounded animate-pulse" />
+              </div>
+            </div>
+            {/* 3rd Place */}
+            <div className="bg-surface/50 p-6 rounded-xl border border-border-subtle">
+              <div className="flex flex-col items-center">
+                <div className="h-10 w-10 bg-background rounded-full animate-pulse mb-3" />
+                <div className="w-16 h-16 bg-background rounded-full animate-pulse mb-3" />
+                <div className="h-4 w-20 bg-background rounded animate-pulse mb-1" />
+                <div className="h-3 w-16 bg-background/50 rounded animate-pulse" />
+              </div>
+            </div>
+          </div>
+          
+          {/* Leaderboard List Skeleton */}
+          <div className="space-y-2">
+            {[4, 5, 6, 7, 8, 9, 10].map(i => (
+              <div key={i} className="bg-surface/50 p-4 rounded-xl border border-border-subtle">
+                <div className="flex items-center gap-4">
+                  <div className="w-8 h-8 bg-background rounded-lg animate-pulse flex-shrink-0" />
+                  <div className="w-12 h-12 bg-background rounded-full animate-pulse flex-shrink-0" />
+                  <div className="flex-1">
+                    <div className="h-4 w-32 bg-background rounded animate-pulse mb-1" />
+                    <div className="h-3 w-20 bg-background/50 rounded animate-pulse" />
+                  </div>
+                  <div className="text-right">
+                    <div className="h-5 w-16 bg-background rounded animate-pulse mb-1" />
+                    <div className="h-3 w-12 bg-background/50 rounded animate-pulse" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
         <>

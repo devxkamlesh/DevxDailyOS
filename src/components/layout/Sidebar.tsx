@@ -22,8 +22,7 @@ import {
   Zap,
   Users,
   Flame,
-  MessageSquarePlus,
-  BarChart3
+  MessageSquarePlus
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
@@ -32,7 +31,6 @@ const navSections = [
     title: 'Overview',
     items: [
       { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { href: '/analytics', label: 'Analytics', icon: BarChart3 },
       { href: '/calendar', label: 'Calendar', icon: Calendar },
     ]
   },

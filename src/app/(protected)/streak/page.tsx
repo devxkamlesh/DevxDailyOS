@@ -194,12 +194,68 @@ export default function StreakPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="h-10 bg-surface rounded-2xl border border-border-subtle animate-pulse w-1/3"></div>
-        <div className="bg-surface p-8 rounded-2xl border border-border-subtle animate-pulse h-48"></div>
+        {/* Header Skeleton */}
+        <div>
+          <div className="h-8 w-44 bg-surface rounded-lg animate-pulse mb-2" />
+          <div className="h-4 w-72 bg-surface/50 rounded animate-pulse" />
+        </div>
+        
+        {/* Current Streak Card Skeleton */}
+        <div className="bg-surface/50 p-8 rounded-2xl border border-border-subtle">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-background rounded-2xl animate-pulse" />
+              <div>
+                <div className="h-4 w-24 bg-background rounded animate-pulse mb-2" />
+                <div className="h-12 w-20 bg-background rounded-lg animate-pulse" />
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="h-4 w-28 bg-background rounded animate-pulse mb-2" />
+              <div className="h-8 w-16 bg-background rounded animate-pulse" />
+            </div>
+          </div>
+          {/* Progress to next badge skeleton */}
+          <div className="bg-background/50 p-4 rounded-xl">
+            <div className="flex justify-between mb-2">
+              <div className="h-4 w-32 bg-background rounded animate-pulse" />
+              <div className="h-4 w-20 bg-background rounded animate-pulse" />
+            </div>
+            <div className="h-3 bg-background rounded-full animate-pulse" />
+          </div>
+        </div>
+        
+        {/* Stats Grid Skeleton */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => (
-            <div key={i} className="bg-surface p-6 rounded-2xl border border-border-subtle animate-pulse h-32"></div>
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="bg-surface/50 p-5 rounded-xl border border-border-subtle">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-background rounded-lg animate-pulse" />
+                <div>
+                  <div className="h-6 w-12 bg-background rounded animate-pulse mb-1" />
+                  <div className="h-3 w-20 bg-background/50 rounded animate-pulse" />
+                </div>
+              </div>
+            </div>
           ))}
+        </div>
+        
+        {/* Badges Section Skeleton */}
+        <div>
+          <div className="h-6 w-36 bg-surface rounded animate-pulse mb-4" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+              <div key={i} className="bg-surface/50 p-4 rounded-xl border border-border-subtle">
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-12 h-12 bg-background rounded-xl animate-pulse mb-3" />
+                  <div className="h-4 w-24 bg-background rounded animate-pulse mb-1" />
+                  <div className="h-3 w-16 bg-background/50 rounded animate-pulse mb-2" />
+                  <div className="h-3 w-20 bg-background/50 rounded animate-pulse mb-3" />
+                  <div className="h-8 w-full bg-background rounded-lg animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     )

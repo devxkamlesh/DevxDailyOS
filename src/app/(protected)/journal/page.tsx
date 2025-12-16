@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/Toast'
 import { BookOpen, Smile, Meh, Frown, Heart, Trophy, AlertCircle, ChevronLeft, ChevronRight, Save, Sparkles } from 'lucide-react'
+import { getLocalDateString } from '@/lib/date-utils'
 
 interface JournalEntry {
   id?: string
@@ -25,7 +26,7 @@ const moods = [
 
 export default function JournalPage() {
   const { showToast } = useToast()
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [selectedDate, setSelectedDate] = useState(getLocalDateString())
   const [entry, setEntry] = useState<JournalEntry>({
     date: selectedDate,
     mood: '',
@@ -155,10 +156,11 @@ export default function JournalPage() {
   const changeDate = (days: number) => {
     const date = new Date(selectedDate)
     date.setDate(date.getDate() + days)
-    setSelectedDate(date.toISOString().split('T')[0])
+    setSelectedDate(getLocalDateString(date))
   }
 
-  const isToday = selectedDate === new Date().toISOString().split('T')[0]
+  const todayDate = getLocalDateString()
+  const isToday = selectedDate === todayDate
   const canEdit = isToday // Only allow editing today's entry
   const formattedDate = new Date(selectedDate).toLocaleDateString('en-US', {
     weekday: 'long',
@@ -255,8 +257,25 @@ export default function JournalPage() {
       </div>
 
       {loading ? (
-        <div className="bg-surface p-8 rounded-xl border border-border-subtle text-center text-foreground-muted">
-          Loading...
+        <div className="space-y-6">
+          {/* Mood skeleton */}
+          <div className="bg-surface p-6 rounded-xl border border-border-subtle">
+            <div className="h-5 w-40 bg-background rounded animate-pulse mb-4" />
+            <div className="flex gap-3">
+              {[1, 2, 3, 4, 5].map(i => (
+                <div key={i} className="w-24 h-12 bg-background rounded-xl animate-pulse" />
+              ))}
+            </div>
+          </div>
+          {/* Content skeleton */}
+          <div className="bg-surface p-6 rounded-xl border border-border-subtle">
+            <div className="h-5 w-32 bg-background rounded animate-pulse mb-4" />
+            <div className="h-32 bg-background rounded-lg animate-pulse" />
+          </div>
+          <div className="bg-surface p-6 rounded-xl border border-border-subtle">
+            <div className="h-5 w-36 bg-background rounded animate-pulse mb-4" />
+            <div className="h-32 bg-background rounded-lg animate-pulse" />
+          </div>
         </div>
       ) : (
         <>

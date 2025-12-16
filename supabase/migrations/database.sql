@@ -1099,26 +1099,6 @@ INSERT INTO coin_packages (name, description, coins, bonus_coins, price_inr, is_
 ('Mega Pack', 'For serious users', 1000, 400, 39900, false, NULL, 4)
 ON CONFLICT DO NOTHING;
 
--- Insert default shop items (Avatars)
-INSERT INTO shop_plans (name, description, plan_type, coin_price, icon, is_active) VALUES
-('Default User', 'Classic user avatar', 'avatar', 0, 'user', true),
-('Crown', 'Royal crown avatar', 'avatar', 100, 'crown', true),
-('Star', 'Shining star avatar', 'avatar', 150, 'star', true),
-('Rocket', 'Blast off with this avatar', 'avatar', 200, 'rocket', true),
-('Flame', 'Hot streak avatar', 'avatar', 250, 'flame', true),
-('Diamond', 'Premium diamond avatar', 'avatar', 500, 'gem', true),
-('Trophy', 'Champion avatar', 'avatar', 300, 'trophy', true),
-('Lightning', 'Electric avatar', 'avatar', 200, 'zap', true),
-('Heart', 'Lovely heart avatar', 'avatar', 150, 'heart', true),
-('Shield', 'Defender avatar', 'avatar', 250, 'shield', true),
-('Target', 'Goal-focused avatar', 'avatar', 200, 'target', true),
-('Coffee', 'Caffeine lover avatar', 'avatar', 100, 'coffee', true),
-('Music', 'Music lover avatar', 'avatar', 150, 'music', true),
-('Gamepad', 'Gamer avatar', 'avatar', 200, 'gamepad-2', true),
-('Code', 'Developer avatar', 'avatar', 250, 'code', true),
-('Brain', 'Smart thinker avatar', 'avatar', 300, 'brain', true)
-ON CONFLICT DO NOTHING;
-
 -- Insert default themes
 INSERT INTO shop_plans (name, description, plan_type, coin_price, icon, is_active) VALUES
 ('Default', 'Classic dark theme', 'theme', 0, 'default', true),

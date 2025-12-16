@@ -321,7 +321,28 @@ export default function SettingsPage() {
   }
 
   if (loading) {
-    return <div className="max-w-4xl mx-auto p-8 text-center">Loading...</div>
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Header skeleton */}
+        <div className="flex items-center gap-4 mb-8">
+          <div className="w-20 h-20 bg-surface rounded-full animate-pulse" />
+          <div>
+            <div className="h-6 w-40 bg-surface rounded animate-pulse mb-2" />
+            <div className="h-4 w-56 bg-surface rounded animate-pulse" />
+          </div>
+        </div>
+        {/* Settings sections skeleton */}
+        {[1, 2, 3].map(i => (
+          <div key={i} className="bg-surface p-6 rounded-2xl border border-border-subtle">
+            <div className="h-5 w-32 bg-background rounded animate-pulse mb-4" />
+            <div className="space-y-3">
+              <div className="h-10 bg-background rounded-lg animate-pulse" />
+              <div className="h-10 bg-background rounded-lg animate-pulse" />
+            </div>
+          </div>
+        ))}
+      </div>
+    )
   }
 
   return (

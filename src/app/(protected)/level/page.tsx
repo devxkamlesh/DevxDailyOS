@@ -29,16 +29,16 @@ const calculateXPForLevel = (level: number): number => {
   return Math.floor(100 * Math.pow(1.5, level - 1))
 }
 
-// Level badges - Starting from Level 30 (HARD MODE)
+// Level badges - Starting from Level 30 (HARD MODE) - Coin rewards: 100-300
 const LEVEL_BADGES: Omit<LevelBadge, 'unlocked' | 'claimed'>[] = [
-  { level: 30, name: 'Grandmaster', icon: Crown, color: 'text-orange-500', bgColor: 'bg-orange-500/10', xpRequired: calculateXPForLevel(30), coinReward: 200 },
-  { level: 40, name: 'Legend', icon: Flame, color: 'text-red-500', bgColor: 'bg-red-500/10', xpRequired: calculateXPForLevel(40), coinReward: 300 },
-  { level: 50, name: 'Mythic', icon: Crown, color: 'text-pink-500', bgColor: 'bg-pink-500/10', xpRequired: calculateXPForLevel(50), coinReward: 500 },
-  { level: 60, name: 'Divine', icon: Star, color: 'text-cyan-500', bgColor: 'bg-cyan-500/10', xpRequired: calculateXPForLevel(60), coinReward: 650 },
-  { level: 75, name: 'Immortal', icon: Star, color: 'text-amber-400', bgColor: 'bg-amber-400/10', xpRequired: calculateXPForLevel(75), coinReward: 750 },
-  { level: 100, name: 'Transcendent', icon: Crown, color: 'text-purple-500', bgColor: 'bg-gradient-to-r from-purple-500/10 to-pink-500/10', xpRequired: calculateXPForLevel(100), coinReward: 1000 },
-  { level: 150, name: 'Celestial', icon: Zap, color: 'text-blue-400', bgColor: 'bg-blue-400/10', xpRequired: calculateXPForLevel(150), coinReward: 1500 },
-  { level: 200, name: 'Eternal', icon: Crown, color: 'text-yellow-400', bgColor: 'bg-gradient-to-r from-yellow-500/10 to-orange-500/10', xpRequired: calculateXPForLevel(200), coinReward: 2000 },
+  { level: 30, name: 'Grandmaster', icon: Crown, color: 'text-orange-500', bgColor: 'bg-orange-500/10', xpRequired: calculateXPForLevel(30), coinReward: 100 },
+  { level: 40, name: 'Legend', icon: Flame, color: 'text-red-500', bgColor: 'bg-red-500/10', xpRequired: calculateXPForLevel(40), coinReward: 125 },
+  { level: 50, name: 'Mythic', icon: Crown, color: 'text-pink-500', bgColor: 'bg-pink-500/10', xpRequired: calculateXPForLevel(50), coinReward: 150 },
+  { level: 60, name: 'Divine', icon: Star, color: 'text-cyan-500', bgColor: 'bg-cyan-500/10', xpRequired: calculateXPForLevel(60), coinReward: 175 },
+  { level: 75, name: 'Immortal', icon: Star, color: 'text-amber-400', bgColor: 'bg-amber-400/10', xpRequired: calculateXPForLevel(75), coinReward: 200 },
+  { level: 100, name: 'Transcendent', icon: Crown, color: 'text-purple-500', bgColor: 'bg-gradient-to-r from-purple-500/10 to-pink-500/10', xpRequired: calculateXPForLevel(100), coinReward: 225 },
+  { level: 150, name: 'Celestial', icon: Zap, color: 'text-blue-400', bgColor: 'bg-blue-400/10', xpRequired: calculateXPForLevel(150), coinReward: 275 },
+  { level: 200, name: 'Eternal', icon: Crown, color: 'text-yellow-400', bgColor: 'bg-gradient-to-r from-yellow-500/10 to-orange-500/10', xpRequired: calculateXPForLevel(200), coinReward: 300 },
 ]
 
 export default function LevelPage() {
@@ -157,12 +157,65 @@ export default function LevelPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="h-10 bg-surface rounded-2xl border border-border-subtle animate-pulse w-1/3"></div>
-        <div className="bg-surface p-8 rounded-2xl border border-border-subtle animate-pulse h-48"></div>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {[1,2,3,4,5].map(i => (
-            <div key={i} className="bg-surface p-6 rounded-2xl border border-border-subtle animate-pulse h-32"></div>
+        {/* Header Skeleton */}
+        <div>
+          <div className="h-8 w-48 bg-surface rounded-lg animate-pulse mb-2" />
+          <div className="h-4 w-80 bg-surface/50 rounded animate-pulse" />
+        </div>
+        
+        {/* Current Level Card Skeleton */}
+        <div className="bg-surface/50 p-8 rounded-2xl border border-border-subtle">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-20 h-20 bg-background rounded-2xl animate-pulse" />
+              <div>
+                <div className="h-4 w-20 bg-background rounded animate-pulse mb-2" />
+                <div className="h-10 w-32 bg-background rounded-lg animate-pulse" />
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="h-4 w-24 bg-background rounded animate-pulse mb-2" />
+              <div className="h-6 w-36 bg-background rounded animate-pulse" />
+            </div>
+          </div>
+          {/* Progress bar skeleton */}
+          <div className="h-4 bg-background rounded-full animate-pulse mb-2" />
+          <div className="flex justify-between">
+            <div className="h-3 w-20 bg-background/50 rounded animate-pulse" />
+            <div className="h-3 w-24 bg-background/50 rounded animate-pulse" />
+          </div>
+        </div>
+        
+        {/* Stats Grid Skeleton */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="bg-surface/50 p-5 rounded-xl border border-border-subtle">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-background rounded-lg animate-pulse" />
+                <div>
+                  <div className="h-6 w-16 bg-background rounded animate-pulse mb-1" />
+                  <div className="h-3 w-20 bg-background/50 rounded animate-pulse" />
+                </div>
+              </div>
+            </div>
           ))}
+        </div>
+        
+        {/* Badges Grid Skeleton */}
+        <div>
+          <div className="h-6 w-32 bg-surface rounded animate-pulse mb-4" />
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {[1, 2, 3, 4, 5].map(i => (
+              <div key={i} className="bg-surface/50 p-4 rounded-xl border border-border-subtle">
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-12 h-12 bg-background rounded-xl animate-pulse mb-3" />
+                  <div className="h-4 w-20 bg-background rounded animate-pulse mb-1" />
+                  <div className="h-3 w-16 bg-background/50 rounded animate-pulse mb-3" />
+                  <div className="h-8 w-full bg-background rounded-lg animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     )
