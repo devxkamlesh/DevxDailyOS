@@ -347,3 +347,47 @@ h2 {
   background-size: 200% 100%;
   animation: shimmer 2s infinite;
 }
+/* Simple Fade Animation - 60fps Optimized */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Animation Classes - GPU Accelerated */
+.animate-fade-in {
+  animation: fadeIn 0.8s ease-out forwards;
+  opacity: 0;
+  will-change: opacity;
+  transform: translateZ(0); /* Force GPU acceleration */
+}
+
+/* Hover Effects - Optimized for 60fps */
+.hover\:opacity-90:hover {
+  opacity: 0.9;
+}
+
+/* Smooth Transitions */
+.transition-opacity {
+  transition-property: opacity;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.duration-300 {
+  transition-duration: 300ms;
+}
+
+/* Responsive Animation Preferences */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in {
+    animation: none;
+    opacity: 1;
+  }
+  
+  .transition-opacity {
+    transition: none;
+  }
+}

@@ -281,57 +281,123 @@ export default function Home() {
 
       {/* Social Proof Section */}
       <section className="min-h-screen flex items-center border-b border-border-subtle relative z-10 overflow-x-hidden">
-        {/* Background Elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-1/3 right-1/4 w-64 h-64 bg-accent-success/5 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-1/3 left-1/4 w-48 h-48 bg-accent-primary/5 rounded-full blur-3xl"></div>
-        </div>
-        
         <div className="w-full flex justify-center relative">
           <div className="w-full max-w-[1200px] 2xl:max-w-[1600px] flex">
             <div className="w-[150px] 2xl:w-[200px] flex-shrink-0"></div>
             <div className="flex-1 min-w-0 px-4 sm:px-8">
-              <div className="text-center mb-20">
-                <div className="inline-flex items-center gap-2 px-4 py-2 mb-6 bg-accent-success/10 border border-accent-success/20 rounded-full">
-                  <div className="w-2 h-2 bg-accent-success rounded-full animate-pulse"></div>
-                  <span className="text-sm font-semibold text-accent-success">Trusted by Builders</span>
-                </div>
-                
-                <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-6 leading-tight">
-                  Built by developers,{' '}
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent-primary to-accent-success">
-                    for builders
-                  </span>
-                </h2>
-                
-                <p className="max-w-2xl mx-auto text-xl text-foreground-muted leading-relaxed">
-                  Used daily by people who value discipline over motivation and substance over hype.
-                </p>
-              </div>
               
-              <div className="max-w-4xl mx-auto">
-                {/* Featured Testimonial */}
-                <div className="relative bg-gradient-to-br from-surface/50 to-surface/30 border border-accent-primary/20 rounded-3xl p-8 lg:p-12 mb-12 text-center">
-                  <div className="absolute top-6 left-6 w-12 h-12 bg-accent-primary/10 rounded-2xl flex items-center justify-center">
-                    <svg className="w-6 h-6 text-accent-primary/60" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h4v10h-10z"/>
-                    </svg>
+              {/* Main Content Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+                
+                {/* Left Side - Content */}
+                <div className="text-center lg:text-left animate-fade-in" style={{animationDelay: '0.1s'}}>
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 mb-6 bg-accent-primary/10 border border-accent-primary/20 rounded-full animate-fade-in" style={{animationDelay: '0.2s'}}>
+                    <div className="w-1.5 h-1.5 bg-accent-primary rounded-full"></div>
+                    <span className="text-xs font-semibold text-accent-primary uppercase tracking-wider">Real Users</span>
                   </div>
                   
-                  <blockquote className="text-2xl lg:text-3xl font-medium text-foreground mb-8 leading-relaxed">
-                    "Sadhana is the only tool that doesn't try to excite me. It just helps me show up every day."
-                  </blockquote>
+                  <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-6 leading-tight animate-fade-in" style={{animationDelay: '0.3s'}}>
+                    Trusted by{' '}
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent-primary to-accent-success">
+                      practitioners
+                    </span>
+                  </h2>
                   
-                  <div className="flex items-center justify-center gap-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-accent-primary/20 to-accent-success/20 rounded-full flex items-center justify-center">
-                      <span className="text-lg font-bold text-foreground">A</span>
+                  <p className="text-lg lg:text-xl text-foreground-muted leading-relaxed mb-8 animate-fade-in" style={{animationDelay: '0.4s'}}>
+                    Join developers, creators, and independent builders who choose consistency over motivation.
+                  </p>
+                  
+                  {/* User Types */}
+                  <div className="grid grid-cols-2 gap-4 mb-8">
+                    <div className="bg-surface/30 border border-border-subtle rounded-xl p-4 text-center animate-fade-in hover:opacity-90 transition-opacity duration-300" style={{animationDelay: '0.5s'}}>
+                      <div className="w-8 h-8 bg-blue-500/10 rounded-lg flex items-center justify-center mx-auto mb-2">
+                        <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                        </svg>
+                      </div>
+                      <p className="text-sm font-medium text-foreground">Developers</p>
+                      <p className="text-xs text-foreground-muted">Building daily</p>
                     </div>
-                    <div className="text-left">
-                      <p className="font-semibold text-foreground">Alex Chen</p>
-                      <p className="text-foreground-muted">Senior Full-stack Developer</p>
+                    
+                    <div className="bg-surface/30 border border-border-subtle rounded-xl p-4 text-center animate-fade-in hover:opacity-90 transition-opacity duration-300" style={{animationDelay: '0.6s'}}>
+                      <div className="w-8 h-8 bg-green-500/10 rounded-lg flex items-center justify-center mx-auto mb-2">
+                        <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                      </div>
+                      <p className="text-sm font-medium text-foreground">Creators</p>
+                      <p className="text-xs text-foreground-muted">Shipping projects</p>
+                    </div>
+                  </div>
+                  
+                  {/* Trust Indicators */}
+                  <div className="flex flex-wrap items-center justify-center lg:justify-start gap-6 text-sm text-foreground-muted animate-fade-in" style={{animationDelay: '0.7s'}}>
+                    <div className="flex items-center gap-2 animate-fade-in" style={{animationDelay: '0.8s'}}>
+                      <div className="w-2 h-2 bg-accent-success rounded-full"></div>
+                      <span>No streak pressure</span>
+                    </div>
+                    <div className="flex items-center gap-2 animate-fade-in" style={{animationDelay: '0.9s'}}>
+                      <div className="w-2 h-2 bg-accent-success rounded-full"></div>
+                      <span>Privacy focused</span>
+                    </div>
+                    <div className="flex items-center gap-2 animate-fade-in" style={{animationDelay: '1.0s'}}>
+                      <div className="w-2 h-2 bg-accent-success rounded-full"></div>
+                      <span>Built for discipline</span>
                     </div>
                   </div>
                 </div>
+                
+                {/* Right Side - Testimonials */}
+                <div className="space-y-6">
+                  {/* Testimonial 1 */}
+                  <div className="bg-gradient-to-br from-surface/40 to-surface/20 border border-accent-primary/20 rounded-2xl p-6 animate-fade-in hover:opacity-90 transition-opacity duration-300" style={{animationDelay: '0.5s'}}>
+                    <div className="flex items-start gap-4 mb-4">
+                      <div className="w-10 h-10 bg-gradient-to-br from-accent-primary/20 to-accent-success/20 rounded-full flex items-center justify-center flex-shrink-0 animate-fade-in" style={{animationDelay: '0.8s'}}>
+                        <span className="text-sm font-bold text-foreground">A</span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-foreground text-sm">Alex Chen</p>
+                        <p className="text-foreground-muted text-xs">Full-stack Developer</p>
+                      </div>
+                    </div>
+                    <blockquote className="text-foreground leading-relaxed text-sm">
+                      "Finally, a tool that doesn't try to gamify everything. Just simple tracking that helps me stay consistent."
+                    </blockquote>
+                  </div>
+                  
+                  {/* Testimonial 2 */}
+                  <div className="bg-gradient-to-br from-surface/40 to-surface/20 border border-accent-success/20 rounded-2xl p-6 animate-fade-in hover:opacity-90 transition-opacity duration-300" style={{animationDelay: '0.7s'}}>
+                    <div className="flex items-start gap-4 mb-4">
+                      <div className="w-10 h-10 bg-gradient-to-br from-accent-success/20 to-accent-primary/20 rounded-full flex items-center justify-center flex-shrink-0 animate-fade-in" style={{animationDelay: '1.0s'}}>
+                        <span className="text-sm font-bold text-foreground">S</span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-foreground text-sm">Sarah Kim</p>
+                        <p className="text-foreground-muted text-xs">Product Designer</p>
+                      </div>
+                    </div>
+                    <blockquote className="text-foreground leading-relaxed text-sm">
+                      "Perfect for building sustainable habits without the guilt trips. Clean interface, focused features."
+                    </blockquote>
+                  </div>
+                  
+                  {/* Testimonial 3 */}
+                  <div className="bg-gradient-to-br from-surface/40 to-surface/20 border border-border-subtle rounded-2xl p-6 animate-fade-in hover:opacity-90 transition-opacity duration-300" style={{animationDelay: '0.9s'}}>
+                    <div className="flex items-start gap-4 mb-4">
+                      <div className="w-10 h-10 bg-gradient-to-br from-accent-primary/20 to-accent-success/20 rounded-full flex items-center justify-center flex-shrink-0 animate-fade-in" style={{animationDelay: '1.2s'}}>
+                        <span className="text-sm font-bold text-foreground">M</span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-foreground text-sm">Mike Rodriguez</p>
+                        <p className="text-foreground-muted text-xs">Indie Maker</p>
+                      </div>
+                    </div>
+                    <blockquote className="text-foreground leading-relaxed text-sm">
+                      "Been using it for 3 months. No flashy features, just what I need to track my daily progress."
+                    </blockquote>
+                  </div>
+                </div>
+                
               </div>
             </div>
             <div className="w-[150px] 2xl:w-[200px] flex-shrink-0"></div>
@@ -604,17 +670,17 @@ export default function Home() {
               <div className="flex-1 min-w-0 px-4 sm:px-8">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
                   <div className="col-span-2 md:col-span-1">
-                    <div className="flex items-center gap-3 mb-3">
-                      <Image src="/Logo/logo.svg" alt="Sadhana" width={24} height={24} className="rounded-lg" />
-                      <span className="text-lg font-bold tracking-tight">Sadhana</span>
+                    <div className="flex items-center gap-3 mb-4">
+                      <Image src="/Logo/logo.svg" alt="Sadhana" width={28} height={28} className="rounded-lg" />
+                      <span className="text-xl font-bold tracking-tight">Sadhana</span>
                     </div>
-                    <p className="text-foreground-muted leading-relaxed text-xs">
+                    <p className="text-foreground-muted leading-relaxed text-sm">
                       A personal discipline system for developers, creators, and independent builders who value consistency over motivation.
                     </p>
                   </div>
                   <div>
-                    <h4 className="text-xs font-semibold text-foreground mb-3">Product</h4>
-                    <ul className="space-y-2 text-xs">
+                    <h4 className="text-sm font-semibold text-foreground mb-4">Product</h4>
+                    <ul className="space-y-3 text-sm">
                       <li><Link href="/dashboard" className="text-foreground-muted hover:text-foreground transition-colors">Dashboard</Link></li>
                       <li><Link href="#features" className="text-foreground-muted hover:text-foreground transition-colors">Features</Link></li>
                       <li><Link href="#how-it-works" className="text-foreground-muted hover:text-foreground transition-colors">How it works</Link></li>
@@ -622,15 +688,15 @@ export default function Home() {
                     </ul>
                   </div>
                   <div>
-                    <h4 className="text-xs font-semibold text-foreground mb-3">Company</h4>
-                    <ul className="space-y-2 text-xs">
+                    <h4 className="text-sm font-semibold text-foreground mb-4">Company</h4>
+                    <ul className="space-y-3 text-sm">
                       <li><Link href="/about" className="text-foreground-muted hover:text-foreground transition-colors">About</Link></li>
                       <li><Link href="/contact" className="text-foreground-muted hover:text-foreground transition-colors">Contact</Link></li>
                     </ul>
                   </div>
                   <div>
-                    <h4 className="text-xs font-semibold text-foreground mb-3">Legal</h4>
-                    <ul className="space-y-2 text-xs">
+                    <h4 className="text-sm font-semibold text-foreground mb-4">Legal</h4>
+                    <ul className="space-y-3 text-sm">
                       <li><Link href="/privacy" className="text-foreground-muted hover:text-foreground transition-colors">Privacy</Link></li>
                       <li><Link href="/terms" className="text-foreground-muted hover:text-foreground transition-colors">Terms</Link></li>
                     </ul>
@@ -638,10 +704,10 @@ export default function Home() {
                 </div>
                 
                 <div className="pt-6 border-t border-border-subtle flex flex-col sm:flex-row items-center justify-between gap-3 pb-4">
-                  <div className="text-xs text-foreground-muted">
+                  <div className="text-sm text-foreground-muted">
                     © 2025 Sadhana. Built with discipline for practitioners.
                   </div>
-                  <div className="text-xs text-foreground-muted">
+                  <div className="text-sm text-foreground-muted">
                     Made in India 🇮🇳
                   </div>
                 </div>
